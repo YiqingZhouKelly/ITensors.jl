@@ -28,11 +28,21 @@ mutable struct ProjMPO
   LRfn::Vector{String}
   id::Int64
   function ProjMPO(H::MPO)
-  P = new(0,length(H)+1,2,H,
-                        Vector{ITensor}(undef, length(H)),
-                        true, Vector{String}(undef, length(H)), rand(1:9999))
-  isdir("ProjMPO_$(P.id)") || (mkdir("ProjMPO_$(P.id)")) # the dir shouldn't exist... but to pass test
-  return P
+    P = new(0,length(H)+1,2,H,
+            Vector{ITensor}(undef, length(H)),
+            true, Vector{String}(undef, length(H)), rand(1:9999))
+    isdir("ProjMPO_$(P.id)") || (mkdir("ProjMPO_$(P.id)")) # the dir shouldn't exist... but to pass test
+    
+    # define finalizer to cleanup disk when gc runs
+    function cleardisk(PH:: ProjMPO)
+      if PH.wdisk
+        for file in PH.LRfn
+          isfile(file) && rm(file)
+        end
+      end
+    end
+    finalizer(cleardisk, P)
+    return P
   end
 end
 
@@ -58,7 +68,7 @@ function set_wdisk(P::ProjMPO, b::Bool)
     P.wdisk = b
     for i=[1:length(P)]
       P[i] = P.LR[i]
-      P.LR[i] = nothing
+      P.LR[i] = ITensor(0)
     end
   end
 end
