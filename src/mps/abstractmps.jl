@@ -17,6 +17,24 @@ size(m::AbstractMPS) = size(data(m))
 ndims(m::AbstractMPS) = ndims(data(m))
 
 """
+    eltype(m::MPS)
+    eltype(m::MPO)
+
+Return the common element type of the
+tensors in the MPS or MPO. For example,
+if all tensors have type Float64 then
+return Float64. But if one or more tensors
+have type ComplexF64, return ComplexF64.
+"""
+function eltype(m::AbstractMPS)
+  T = eltype(m[1])
+  for n=2:length(m)
+    T = promote_type(T,eltype(m[n]))
+  end
+  return T
+end
+
+"""
     ITensors.data(::MPS/MPO)
 
 Returns a view of the Vector storage of an MPS/MPO.
@@ -88,8 +106,7 @@ function orthocenter(m::T) where {T<:AbstractMPS}
   return leftlim(m)+1
 end
 
-getindex(M::AbstractMPS, n::Integer) =
-  getindex(data(M), n)
+getindex(M::AbstractMPS, n) = getindex(data(M), n)
 
 lastindex(M::AbstractMPS) =
   lastindex(data(M))
@@ -1734,9 +1751,15 @@ splitblocks(::typeof(linkinds), M::AbstractMPS; tol = 0) =
 #
 
 BroadcastStyle(MPST::Type{<:AbstractMPS}) = Style{MPST}()
+BroadcastStyle(::Style{MPST}, ::DefaultArrayStyle{N}) where {N, MPST<:AbstractMPS} = Style{MPST}()
 
+broadcastable(ψ::AbstractMPS) = ψ
 copyto!(ψ::AbstractMPS, b::Broadcasted) = copyto!(data(ψ), b)
 
+similar(::Broadcasted{Style{MPST}}, ::Type{ElType}, dims) where {ElType,MPST<:AbstractMPS} =
+    similar(Array{ElType}, dims)
+similar(bc::Broadcasted{Style{MPST}}, ::Type{ElType}) where {ElType,MPST<:AbstractMPS} =
+    similar(Array{ElType}, axes(bc))
 #
 # Printing functions
 #

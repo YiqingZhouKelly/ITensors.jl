@@ -1,6 +1,7 @@
 using Combinatorics
 using ITensors
 using Random
+using LinearAlgebra: diag
 using Test
 
 Random.seed!(1234)
@@ -135,14 +136,18 @@ include("util.jl")
 
   @testset "randomMPS with chi==1" begin
     phi = randomMPS(sites)
+    phic = randomMPS(ComplexF64,sites)
 
     @test maxlinkdim(phi) == 1
+    @test maxlinkdim(phic) == 1
 
     @test hasind(phi[1],sites[1])
     @test norm(phi[1])≈1.0
+    @test norm(phic[1])≈1.0
 
     @test hasind(phi[4],sites[4])
     @test norm(phi[4])≈1.0
+    @test norm(phic[4])≈1.0
   end
 
   @testset "inner different MPS" begin
@@ -485,6 +490,11 @@ end
       r = linkind(M,j-1)
       @test norm(R-delta(r,r')) < 1E-10
     end
+
+    # Complex case
+    Mc = randomMPS(sites,chi)
+    @test inner(Mc,Mc) ≈ 1.0+0.0im
+
   end
 
   @testset "randomMPS from initial state (QN case)" begin
@@ -512,6 +522,53 @@ end
     state[3] = 2
     M = randomMPS(sites,state,chi)
     @test flux(M) == QN("Sz",-4)
+  end
+
+  @testset "Expected value and Correlations" begin
+    N = 8
+    m = 4
+
+    # Non-fermionic case - spin system
+    s = siteinds("S=1/2",N;conserve_qns=true)
+    psi = randomMPS(s,n->isodd(n) ? "Up" : "Dn",m)
+    Cpm = correlation_matrix(psi,"S+","S-")
+    # Check using AutoMPO:
+    for i=1:N,j=i:N
+      a = AutoMPO()
+      a += "S+",i,"S-",j
+      @test inner(psi,MPO(a,s),psi) ≈ Cpm[i,j]
+    end
+    PM = expect(psi,"S+*S-")
+    @test norm(PM-diag(Cpm)) < 1E-8
+
+    range = 3:7
+    @test norm(PM[range] - expect(psi,"S+*S-";site_range=range)) < 1E-8
+
+    # With start_site, end_site arguments:
+    s = siteinds("S=1/2",N)
+    psi = randomMPS(ComplexF64,s,m)
+    ss,es = 3,6
+    Nb = es-ss+1
+    Cpm = correlation_matrix(psi,"S+","S-";site_range=ss:es)
+    Czz = correlation_matrix(psi,"Sz","Sz";site_range=ss:es)
+    @test size(Cpm) == (Nb,Nb)
+    # Check using AutoMPO:
+    for i=ss:es,j=i:es
+      a = AutoMPO()
+      a += "S+",i,"S-",j
+      @test inner(psi,MPO(a,s),psi) ≈ Cpm[i-ss+1,j-ss+1]
+    end
+
+    # Fermionic case
+    s = siteinds("Electron",N)
+    psi = randomMPS(s,m)
+    Cuu = correlation_matrix(psi,"Cdagup","Cup")
+    # Check using AutoMPO:
+    for i=1:N,j=i:N
+      a = AutoMPO()
+      a += "Cdagup",i,"Cup",j
+      @test inner(psi,MPO(a,s),psi) ≈ Cuu[i,j]
+    end
   end
 
   @testset "swapbondsites" begin
@@ -652,7 +709,8 @@ end
     @test siteinds(M, 3; tags = "n=2") == IndexSet()
   end
 
-  @testset "movesites $N sites" for N in 1:7
+
+  @testset "movesites $N sites" for N in 1:4
     s0 = siteinds("S=1/2", N)
     for perm in permutations(1:N)
       s = s0[perm]
@@ -759,6 +817,7 @@ end
     end
   end
 
+
   @testset "movesites subsets of sites" begin
     N = 6
     s = siteinds("S=1/2", N)
@@ -797,40 +856,40 @@ end
       @test maxlinkdim(ψ̃) == 1
     end
 
-    for i in 1:N, j in 1:N, k in 1:N, l in 1:N
-      ns = [i, j, k, l]
-      !allunique(ns) && continue
-      min_ns = minimum(ns)
-      ns′ = collect(min_ns:min_ns+length(ns)-1)
-      ψ′ = movesites(ψ, ns .=> ns′; cutoff = 1e-15)
-      @test siteind(ψ′, min_ns) == siteind(ψ, i)
-      @test siteind(ψ′, min_ns+1) == siteind(ψ, j)
-      @test siteind(ψ′, min_ns+2) == siteind(ψ, k)
-      @test siteind(ψ′, min_ns+3) == siteind(ψ, l)
-      @test maxlinkdim(ψ′) == 1
-      ψ̃ = movesites(ψ′, ns′ .=> ns; cutoff = 1e-15)
-      for n in 1:N
-        @test siteind(ψ̃, n) == siteind(ψ, n)
-      end
-      @test maxlinkdim(ψ̃) == 1
-    end
+    #for i in 1:N, j in 1:N, k in 1:N, l in 1:N
+    #  ns = [i, j, k, l]
+    #  !allunique(ns) && continue
+    #  min_ns = minimum(ns)
+    #  ns′ = collect(min_ns:min_ns+length(ns)-1)
+    #  ψ′ = movesites(ψ, ns .=> ns′; cutoff = 1e-15)
+    #  @test siteind(ψ′, min_ns) == siteind(ψ, i)
+    #  @test siteind(ψ′, min_ns+1) == siteind(ψ, j)
+    #  @test siteind(ψ′, min_ns+2) == siteind(ψ, k)
+    #  @test siteind(ψ′, min_ns+3) == siteind(ψ, l)
+    #  @test maxlinkdim(ψ′) == 1
+    #  ψ̃ = movesites(ψ′, ns′ .=> ns; cutoff = 1e-15)
+    #  for n in 1:N
+    #    @test siteind(ψ̃, n) == siteind(ψ, n)
+    #  end
+    #  @test maxlinkdim(ψ̃) == 1
+    #end
 
-    for i in 1:N, j in 1:N, k in 1:N, l in 1:N, m in 1:N
-      ns = [i, j, k, l, m]
-      !allunique(ns) && continue
-      min_ns = minimum(ns)
-      ns′ = collect(min_ns:min_ns+length(ns)-1)
-      ψ′ = movesites(ψ, ns .=> ns′; cutoff = 1e-15)
-      for n in 1:length(ns)
-        @test siteind(ψ′, min_ns+n-1) == siteind(ψ, ns[n])
-      end
-      @test maxlinkdim(ψ′) == 1
-      ψ̃ = movesites(ψ′, ns′ .=> ns; cutoff = 1e-15)
-      for n in 1:N
-        @test siteind(ψ̃, n) == siteind(ψ, n)
-      end
-      @test maxlinkdim(ψ̃) == 1
-    end
+    #for i in 1:N, j in 1:N, k in 1:N, l in 1:N, m in 1:N
+    #  ns = [i, j, k, l, m]
+    #  !allunique(ns) && continue
+    #  min_ns = minimum(ns)
+    #  ns′ = collect(min_ns:min_ns+length(ns)-1)
+    #  ψ′ = movesites(ψ, ns .=> ns′; cutoff = 1e-15)
+    #  for n in 1:length(ns)
+    #    @test siteind(ψ′, min_ns+n-1) == siteind(ψ, ns[n])
+    #  end
+    #  @test maxlinkdim(ψ′) == 1
+    #  ψ̃ = movesites(ψ′, ns′ .=> ns; cutoff = 1e-15)
+    #  for n in 1:N
+    #    @test siteind(ψ̃, n) == siteind(ψ, n)
+    #  end
+    #  @test maxlinkdim(ψ̃) == 1
+    #end
 
   end
 

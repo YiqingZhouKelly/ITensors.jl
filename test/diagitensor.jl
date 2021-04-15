@@ -96,6 +96,19 @@ using ITensors,
         end
       end
     end
+
+    @testset "Complex operations" begin
+      xr = randn(d)
+      xi = randn(d)
+      D = diagITensor(xr+im*xi,i,j,k)
+      @test eltype(D) == ComplexF64
+      rD = real(D)
+      iD = imag(D)
+      @test eltype(rD) == Float64
+      @test eltype(iD) == Float64
+      @test typeof(storage(rD)) <: NDTensors.Diag
+      @test norm(rD+im*iD-D) < 1E-8
+    end
     
     @testset "fill!" begin
       D = diagITensor(ones(d), i,j,k)
@@ -132,7 +145,7 @@ using ITensors,
       D = diagITensor(v,i,j,k)
       T = dense(D)
       
-      @test store(T) isa NDTensors.Dense{Float64}
+      @test storage(T) isa NDTensors.Dense{Float64}
       for ii = 1:d, jj = 1:d, kk = 1:d
         if ii == jj == kk
           @test T[ii,ii,ii] == ii
@@ -343,7 +356,7 @@ using ITensors,
       D = δ(i,j,k)
       T = dense(D)
 
-      @test store(T) isa NDTensors.Dense{Float64}
+      @test storage(T) isa NDTensors.Dense{Float64}
       for ii = 1:d, jj = 1:d, kk = 1:d
         if ii == jj == kk
           @test T[ii,ii,ii] == 1.0

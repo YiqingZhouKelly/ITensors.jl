@@ -11,8 +11,16 @@ ITensor
 ```@docs
 ITensor(::Type{<:Number}, ::ITensors.Indices)
 ITensor(::Type{<:Number}, ::UndefInitializer, ::ITensors.Indices)
+ITensor(::Number, ::ITensors.Indices)
+ITensor(::Array{<:AbstractFloat},::ITensors.Indices)
 randomITensor(::Type{<:Number}, ::ITensors.Indices)
-setelt(::IndexVal)
+onehot(::IndexVal)
+```
+
+## Dense View Constructors
+
+```@docs
+itensor(::Array{<:Number},::ITensors.Indices)
 ```
 
 ## QN BlockSparse Constructors
@@ -20,6 +28,7 @@ setelt(::IndexVal)
 ```@docs
 ITensor(::Type{<:Number}, ::QN, ::ITensors.Indices)
 ITensor(A::Array, inds::ITensors.QNIndexSet)
+ITensor(::Type{<:Number}, ::UndefInitializer, ::QN, ::ITensors.Indices)
 ```
 
 ## Empty Constructors
@@ -73,6 +82,7 @@ setindex!(::ITensor, ::Number, ::Int...)
 ```@docs
 inds(::ITensor)
 ind(::ITensor, ::Int)
+dir(::ITensor, ::Index)
 ```
 
 ## [Priming and tagging](@id Priming_and_tagging_ITensor)
@@ -123,10 +133,11 @@ exp(::ITensor, ::Any, ::Any)
 ## Decompositions
 ```@docs
 svd(::ITensor, ::Any...)
+eigen(::ITensor, ::Any, ::Any)
 factorize(::ITensor, ::Any...)
 ```
 
-## Operations
+## Memory operations
 
 ```@docs
 permute(::ITensor, ::Any)

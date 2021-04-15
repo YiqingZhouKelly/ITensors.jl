@@ -144,6 +144,7 @@ export
   nzblocks,
   nzblock,
   nnz,
+  onehot,
   order,
   permute,
   prime!,
@@ -159,7 +160,7 @@ export
   scale!,
   scalar,
   setelt,
-  store,
+  storage,
   setprime!,
   swapprime!,
   settags!,
@@ -234,6 +235,8 @@ export
   MPS,
   # Methods
   ⋅,
+  correlation_matrix,
+  expect,
   inner,
   isortho,
   linkdim,
@@ -295,6 +298,10 @@ export
   noise,
   noise!,
   nsweep,
+  setmaxdim!,
+  setmindim!,
+  setcutoff!,
+  setnoise!,
   sweepnext,
 
 # physics/autompo.jl

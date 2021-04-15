@@ -6,9 +6,31 @@
 Construct an ITensor with BlockSparse storage filled with `zero(ElT)` where the nonzero blocks are determined by `flux`.
 
 If `ElT` is not specified it defaults to `Float64`.
+
+# Examples
+
+```julia
+i = Index([QN(0)=>1, QN(1)=>2], "i")
+
+# QN ITensors with flux of QN(0):
+
+A = ITensor(i',dag(i))
+B = ITensor(QN(0),i',dag(i))
+
+# QN ITensor with flux of QN(1):
+
+C = ITensor(QN(1),i',dag(i))
+
+# Complex QN ITensor with flux of QN(1):
+
+C = ITensor(ComplexF64,QN(1),i',dag(i))
+```
 """
 function ITensor(::Type{ElT}, flux::QN, inds::Indices) where {ElT <: Number}
   blocks = nzblocks(flux, IndexSet(inds))
+  if length(blocks)==0
+    error("ITensor with flux=$flux resulted in no allowed blocks")
+  end
   T = BlockSparseTensor(ElT, blocks, inds)
   return itensor(T)
 end
@@ -32,23 +54,42 @@ ITensor(::Type{ElT}, inds::QNIndex...) where {ElT<:Number} =
 
 ITensor(inds::QNIndex...) = ITensor(Float64, QN(), IndexSet(inds...))
 
-function _ITensor(A::Array{ElT}, inds::QNIndexSet; tol = 0) where {ElT}
-  length(A) ≠ dim(inds) && throw(DimensionMismatch("In ITensor(::Array, ::IndexSet), length of Array ($(length(A))) must match total dimension of IndexSet ($(dim(inds)))"))
-  T = emptyITensor(ElT, inds)
-  A = reshape(A, dims(inds))
-  for vs in eachindex(T)
-    Avs = A[vs]
-    if abs(Avs) > tol
-      T[vs] = A[vs]
-    end
-  end
-  return T
+"""
+    ITensor([::Type{ElT} = Float64,] ::UndefInitializer, flux::QN, inds)
+    ITensor([::Type{ElT} = Float64,] ::UndefInitializer, flux::QN, inds::Index...)
+
+Construct an ITensor with indices `inds` and BlockSparse storage with undefined elements of type `ElT`, where the nonzero (allocated) blocks are determined by the provided QN `flux`. One purpose for using this constructor is that initializing the elements in an undefined way is faster than initializing them to a set value such as zero.
+
+The storage will have `NDTensors.BlockSparse` type.
+
+# Examples
+
+```julia
+i = Index([QN(0)=>1, QN(1)=>2], "i")
+A = ITensor(undef,QN(0),i',dag(i))
+B = ITensor(Float64,undef,QN(0),i',dag(i))
+C = ITensor(ComplexF64,undef,QN(0),i',dag(i))
+```
+"""
+function ITensor(::Type{ElT}, ::UndefInitializer, 
+                 flux::QN, inds::Indices) where {ElT <: Number}
+  blocks = nzblocks(flux, IndexSet(inds))
+  T = BlockSparseTensor(ElT,undef,blocks,inds)
+  return itensor(T)
+end
+
+function ITensor(::Type{ElT}, ::UndefInitializer, 
+                 flux::QN, inds::Index...) where {ElT <: Number}
+  return ITensor(ElT,undef,flux,IndexSet(inds...))
+end
+
+function ITensor(::UndefInitializer, 
+                 flux::QN, inds::Index...)
+  return ITensor(Float64,undef,flux,IndexSet(inds...))
 end
 
 """
-    ITensor(::Array, ::IndexSet; tol = 0)
-
-    ITensor(::Array, ::Index...; tol = 0)
+    ITensor([ElT::Type, ]::Array, inds; tol = 0)
 
 Create a block sparse ITensor from the input Array, and collection 
 of QN indices. Zeros are dropped and nonzero blocks are determined
@@ -58,6 +99,7 @@ Optionally, you can set a tolerance such that elements
 less than or equal to the tolerance are dropped.
 
 # Examples
+
 ```julia
 julia> i = Index([QN(0)=>1, QN(1)=>2], "i");
 
@@ -81,25 +123,23 @@ Block: (2, 2)
  0.0  4.0
 ```
 """
-ITensor(A::Array, inds::QNIndexSet; tol = 0) =
-  _ITensor(A, inds; tol = tol)
+function itensor(::Type{ElT}, A::Array{<: Number}, inds::QNIndexSet; tol = 0) where {ElT <: Number}
+  length(A) ≠ dim(inds) && throw(DimensionMismatch("In ITensor(::Array, ::IndexSet), length of Array ($(length(A))) must match total dimension of IndexSet ($(dim(inds)))"))
+  T = emptyITensor(ElT, inds)
+  A = reshape(A, dims(inds))
+  for vs in eachindex(T)
+    Avs = A[vs]
+    if abs(Avs) > tol
+      T[vs] = A[vs]
+    end
+  end
+  return T
+end
 
-# Defined to fix ambiguity error
-ITensor(A::Array{ <: AbstractFloat}, inds::QNIndexSet; tol = 0) =
-  _ITensor(A, inds; tol = tol)
-
-ITensor(A::Array, inds::QNIndex...; tol = 0) =
-  _ITensor(A, IndexSet(inds...); tol = tol)
-
-itensor(A::Array, inds::QNIndexSet; tol = 0) =
-  ITensor(A, inds; tol = tol)
-
-itensor(A::Array, inds::QNIndex...; tol = 0) =
-  ITensor(A, inds...; tol = tol)
-
-# Defined to fix ambiguity error
-itensor(A::Array{ <: Number}, inds::QNIndex...; tol = 0) =
-  ITensor(A, inds...; tol = tol)
+# Short-circuit the non-QN version that does a copy here
+function ITensor(::Type{ElT}, A::Array{ElT}, inds::QNIndexSet; kwargs...) where {ElT}
+  return itensor(ElT, A, inds; kwargs...)
+end
 
 """
     emptyITensor([::Type{ElT} = Float64, ]inds)
@@ -127,7 +167,7 @@ Construct an ITensor with `NDTensors.BlockSparse` storage filled with random ele
 If `ElT` is not specified it defaults to `Float64`. If the flux is not specified it defaults to `QN()`.
 """
 function randomITensor(::Type{ElT}, flux::QN, inds::Indices) where {ElT <: Number}
-  T = ITensor(ElT, flux, inds)
+  T = ITensor(ElT, undef, flux, inds)
   randn!(T)
   return T
 end
