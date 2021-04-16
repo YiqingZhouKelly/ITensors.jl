@@ -11,8 +11,16 @@ ITensor
 ```@docs
 ITensor(::Type{<:Number}, ::ITensors.Indices)
 ITensor(::Type{<:Number}, ::UndefInitializer, ::ITensors.Indices)
+ITensor(::Number, ::ITensors.Indices)
+ITensor(::Array{<:AbstractFloat},::ITensors.Indices)
 randomITensor(::Type{<:Number}, ::ITensors.Indices)
-setelt(::IndexVal)
+onehot(::IndexVal)
+```
+
+## Dense View Constructors
+
+```@docs
+itensor(::Array{<:Number},::ITensors.Indices)
 ```
 
 ## QN BlockSparse Constructors
@@ -20,6 +28,7 @@ setelt(::IndexVal)
 ```@docs
 ITensor(::Type{<:Number}, ::QN, ::ITensors.Indices)
 ITensor(A::Array, inds::ITensors.QNIndexSet)
+ITensor(::Type{<:Number}, ::UndefInitializer, ::QN, ::ITensors.Indices)
 ```
 
 ## Empty Constructors
@@ -53,17 +62,17 @@ delta(::Type{<:Number}, ::QN, ::ITensors.Indices)
 ## Convert to Array
 
 ```@docs
-Array{ElT, N}(::ITensor{N}, ::Vararg{Index, N}) where {ElT, N}
+Array{ElT, N}(::ITensor, ::Vararg{Index, N}) where {ElT, N}
 array(::ITensor)
-matrix(::ITensor{2})
-vector(::ITensor{1})
+matrix(::ITensor)
+vector(::ITensor)
 ```
 
 ## Getting and setting elements
 
 ```@docs
 getindex(::ITensor, ::Any...)
-getindex(::ITensor{N}, ::Vararg{Int,N}) where {N}
+getindex(::ITensor, ::Vararg{Int,N}) where {N}
 setindex!(::ITensor, ::Number, ::Any...)
 setindex!(::ITensor, ::Number, ::Int...)
 ```
@@ -73,9 +82,10 @@ setindex!(::ITensor, ::Number, ::Int...)
 ```@docs
 inds(::ITensor)
 ind(::ITensor, ::Int)
+dir(::ITensor, ::Index)
 ```
 
-## Priming and tagging
+## [Priming and tagging](@id Priming_and_tagging_ITensor)
 
 ```@docs
 prime(::ITensor, ::Any...)
@@ -94,10 +104,14 @@ swaptags(::ITensor, ::Any...)
 
 ```@docs
 commoninds
-hascommoninds
+commonind
 uniqueinds
+uniqueind
 noncommoninds
+noncommonind
 unioninds
+unionind
+hascommoninds
 ```
 
 ## Index Manipulations
@@ -119,10 +133,11 @@ exp(::ITensor, ::Any, ::Any)
 ## Decompositions
 ```@docs
 svd(::ITensor, ::Any...)
+eigen(::ITensor, ::Any, ::Any)
 factorize(::ITensor, ::Any...)
 ```
 
-## Operations
+## Memory operations
 
 ```@docs
 permute(::ITensor, ::Any)

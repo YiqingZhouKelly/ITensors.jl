@@ -24,8 +24,26 @@ mutable struct ProjMPO
   nsite::Int
   H::MPO
   LR::Vector{ITensor}
-  ProjMPO(H::MPO) = new(0,length(H)+1,2,H,
-                        Vector{ITensor}(undef, length(H)))
+  wdisk::Bool
+  LRfn::Vector{String}
+  id::Int64
+  function ProjMPO(H::MPO)
+    P = new(0,length(H)+1,2,H,
+            Vector{ITensor}(undef, length(H)),
+            true, Vector{String}(undef, length(H)), rand(1:9999))
+    isdir("ProjMPO_$(P.id)") || (mkdir("ProjMPO_$(P.id)")) # the dir shouldn't exist... but to pass test
+    
+    # define finalizer to cleanup disk when gc runs
+    function cleardisk(PH:: ProjMPO)
+      if PH.wdisk
+        for file in PH.LRfn
+          isfile(file) && rm(file)
+        end
+      end
+    end
+    finalizer(cleardisk, P)
+    return P
+  end
 end
 
 """
@@ -44,18 +62,58 @@ the length of the MPO used to construct it
 """
 Base.length(P::ProjMPO) = length(P.H)
 
+function set_wdisk(P::ProjMPO, b::Bool)
+  if !P.wdisk && b
+    isdir("ProjMPO_$(P.id)") || (mkdir("ProjMPO_$(P.id)"))
+    P.wdisk = b
+    for i=[1:length(P)]
+      P[i] = P.LR[i]
+      P.LR[i] = ITensor(0)
+    end
+  end
+end
+
+function Base.getindex(P::ProjMPO, i::Int)
+"""
+    getindex(P::ProjMPO, i::Int)
+
+Access the ith environment ITensor. If wdisk
+is True, will read from disk.
+"""
+  if !P.wdisk
+    return P.LR[i]
+  else
+  f = HDF5.h5open(P.LRfn[i])
+  T = HDF5.read(f,"site$(i)", ITensor)
+  close(f)
+  return T
+  end
+end
+
+function Base.setindex!(P::ProjMPO,T::ITensor, i::Int)
+  if !P.wdisk
+    P.LR[i] = T
+  else
+    filename = "ProjMPO_$(P.id)/site[$(i)].h5"
+    isfile(filename) && rm(filename)
+    P.LRfn[i] = filename
+    HDF5.h5write(filename, "site$(i)", T)
+    T = nothing
+  end
+end
+
 function lproj(P::ProjMPO)
   (P.lpos <= 0) && return nothing
-  return P.LR[P.lpos]
+  return P[P.lpos]
 end
 
 function rproj(P::ProjMPO)
   (P.rpos >= length(P)+1) && return nothing
-  return P.LR[P.rpos]
+  return P[P.rpos]
 end
 
 """
-    product(P::ProjMPO,v::ITensor{N})::ITensor{N}
+    product(P::ProjMPO,v::ITensor)::ITensor
 
     (P::ProjMPO)(v::ITensor)
 
@@ -69,7 +127,7 @@ as `v`. The operator overload `P(v)` is
 shorthand for `product(P,v)`.
 """
 function product(P::ProjMPO,
-                 v::ITensor{N})::ITensor{N} where N
+                 v::ITensor)::ITensor
   Hv = v
   if isnothing(lproj(P))
     if !isnothing(rproj(P))
@@ -159,10 +217,10 @@ function makeL!(P::ProjMPO,
   while P.lpos < k
     ll = P.lpos
     if ll <= 0
-      P.LR[1] = psi[1]*P.H[1]*dag(prime(psi[1]))
+      P[1] = psi[1]*P.H[1]*dag(prime(psi[1]))
       P.lpos = 1
     else
-      P.LR[ll+1] = P.LR[ll]*psi[ll+1]*P.H[ll+1]*dag(prime(psi[ll+1]))
+      P[ll+1] = P[ll]*psi[ll+1]*P.H[ll+1]*dag(prime(psi[ll+1]))
       P.lpos += 1
     end
   end
@@ -175,10 +233,10 @@ function makeR!(P::ProjMPO,
   while P.rpos > k
     rl = P.rpos
     if rl >= N+1
-      P.LR[N] = psi[N]*P.H[N]*dag(prime(psi[N]))
+      P[N] = psi[N]*P.H[N]*dag(prime(psi[N]))
       P.rpos = N
     else
-      P.LR[rl-1] = P.LR[rl]*psi[rl-1]*P.H[rl-1]*dag(prime(psi[rl-1]))
+      P[rl-1] = P[rl]*psi[rl-1]*P.H[rl-1]*dag(prime(psi[rl-1]))
       P.rpos -= 1
     end
   end
@@ -227,26 +285,30 @@ function noiseterm(P::ProjMPO,
   if nsite(P) != 2
     error("noise term only defined for 2-site ProjMPO")
   end
+
   if ortho == "left"
-    nt = P.H[P.lpos+1]*phi
+    AL = P.H[P.lpos+1]
     if !isnothing(lproj(P))
-      nt *= lproj(P)
+      AL = lproj(P)*AL
     end
+    nt = AL*phi
   elseif ortho == "right"
-    nt = phi*P.H[P.rpos-1]
+    AR = P.H[P.rpos-1]
     if !isnothing(rproj(P))
-      nt *= rproj(P)
+      AR = AR*rproj(P)
     end
+    nt = phi*AR
   else
     error("In noiseterm, got ortho = $ortho, only supports `left` and `right`")
   end
   nt = nt*dag(noprime(nt))
+
   return nt
 end
 
 function checkflux(P::ProjMPO)
   checkflux(P.H)
-  for n in length(P.LR)
+  for n in length(P.LR) # what to do here?
     if isassigned(P.LR, n)
       checkflux(P.LR[n])
     end

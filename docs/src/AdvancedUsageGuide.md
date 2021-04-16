@@ -133,8 +133,8 @@ NDTensors.Dense{Float64,Array{Float64,1}}
  1.0763652402177477  0.030353720156277037
 ```
 
-A common place you might accidentally come across this is the 
-following:
+A common place you might accidentally come across this is when
+you are creating a Hamiltonian with `AutoMPO`:
 ```julia
 julia> N = 4;
 
@@ -143,7 +143,7 @@ julia> sites = siteinds("S=1/2",N);
 julia> ampo = AutoMPO();
 
 julia> for j=1:N-1
-         ampo += ("Sz", j, "Sz", j+1)
+         ampo += "Sz", j, "Sz", j+1
        end
 ERROR: UndefVarError: ampo not defined
 Stacktrace:
@@ -168,12 +168,171 @@ for more information.
 
 We recommend the package [OhMyREPL](https://kristofferc.github.io/OhMyREPL.jl/latest/) which adds syntax highlighting to the Julia REPL.
 
+## Finding documentation interactively
+
+Julia provides many tools for searching for documentation interactively at the REPL. Say that you want to learn more about how to use an ITensor from the command line. You can start by typing `?` followed by `ITensor`:
+```julia
+julia> using ITensors
+
+julia> ?ITensor
+search: ITensor ITensors itensor emptyITensor randomITensor
+
+  An ITensor is a tensor whose interface is independent of its
+  memory layout. Therefore it is not necessary to know the ordering
+  of an ITensor's indices, only which indices an ITensor has.
+  Operations like contraction and addition of ITensors automatically
+  handle any memory permutations.
+
+  Examples
+  ≡≡≡≡≡≡≡≡≡≡
+
+  julia> i = Index(2, "i")
+  (dim=2|id=287|"i")
+  
+  julia> A = randomITensor(i', i)
+  ITensor ord=2 (dim=2|id=287|"i")' (dim=2|id=287|"i")
+  NDTensors.Dense{Float64,Array{Float64,1}}
+  
+  julia> @show A;
+  A = ITensor ord=2
+  Dim 1: (dim=2|id=287|"i")'
+  Dim 2: (dim=2|id=287|"i")
+  NDTensors.Dense{Float64,Array{Float64,1}}
+   2×2
+   0.28358594718392427   1.4342219756446355
+   1.6620103556283987   -0.40952231269251566
+  
+  julia> @show inds(A);
+  inds(A) = IndexSet{2} (dim=2|id=287|"i")' (dim=2|id=287|"i") 
+[...]
+```
+(the specific output may be different for different versions of ITensors.jl as we update the docs). You can use the help prompt (which you get by typing `?` at the REPL) to print out documentation for types and methods.
+
+Another way to get information about types is with the function `fieldnames`:
+```julia
+julia> fieldnames(ITensor)
+(:store, :inds)
+```
+which shows the fields of a type. Note that in general the specific names of the fields and structures of types may change (we consider those to be internal details), however we often make functions to access the fields of a type that have the same name as the field, so it is a good place to get started. For example, you can access the storage and indices of an ITensor `A` with the functions `store(A)` and `inds(A)`.
+
+Another helpful function is `apropos`, which search through all documentation for a string (ignoring the case) and prints a list of all types and methods with documentation that contain the string. For example:
+```julia
+julia> apropos("IndexSet")
+ITensors.IndexSet
+ITensors.push
+ITensors.insertat
+ITensors.getfirst
+ITensors.commoninds
+ITensors.pushfirst
+NDTensors.mindim
+[...]
+```
+This can often return too much information. A helpful way to narrow down the search is with regular expressions, for example:
+```julia
+julia> apropos(r"ITensor.*IndexSet")
+ITensors.block
+ITensors.hasinds
+ITensors.ITensor
+NDTensors.inds
+```
+where the notation `r"..."` is Julia notation for making a string that will be interpreted as a [regular expression](https://docs.julialang.org/en/v1/manual/strings/#Regular-Expressions). Here, we are searching for any documentation that contains the string "ITensor" followed at some point by "IndexSet". The notation `.*` is regular expression notation for matching any number of any type of character.
+
+Based on the `apropos` function, we can make some helper functions that may be useful. For example:
+```julia
+using ITensors
+
+function finddocs(s)
+  io = IOBuffer()
+  apropos(io, s)
+  v = chomp(String(take!(io)))
+  return split(v, "\n")
+end
+
+function finddocs(s...)
+  intersect(finddocs.(s)...)
+end
+
+found_methods = finddocs("indices", "set difference")
+display(found_methods)
+```
+returns:
+```julia
+3-element Array{SubString{String},1}:
+ "ITensors.noncommoninds"
+ "Base.setdiff"
+ "ITensors.uniqueinds"
+```
+which are the functions that have docs that contain the strings `"indices"` and `"set difference"`. We can print the docs for `uniqueinds` to find:
+```julia
+help?> uniqueinds
+search: uniqueinds unique_siteinds uniqueind uniqueindex
+
+  uniqueinds(A, B; kwargs...)
+  uniqueinds(::Order{N}, A, B; kwargs...)
+
+
+  Return an IndexSet with indices that are unique to the set of
+  indices of A and not in B (the set difference).
+
+  Optionally, specify the desired number of indices as Order(N),
+  which adds a check and can be a bit more efficient.
+```
+
+We can also filter the results to only specify functions from certain modules, for example:
+```julia
+julia> filter(x -> startswith(x, "ITensors"), finddocs("indices", "set difference"))
+2-element Array{SubString{String},1}:
+ "ITensors.noncommoninds"
+ "ITensors.uniqueinds"
+
+julia> filter(x -> !startswith(x, "ITensors"), finddocs("indices", "set difference"))
+1-element Array{SubString{String},1}:
+ "Base.setdiff"
+```
+Ideally we could have `apropos` do a "smart" Google-like search of the appropriate docstrings, but this is a pretty good start.
+
+Additionally, the `names` function can be useful, which prints the names of all functions and types that are exported by a module. For example:
+```julia
+julia> names(ITensors)
+264-element Array{Symbol,1}:
+ Symbol("@OpName_str")
+ Symbol("@SiteType_str")
+ Symbol("@StateName_str")
+ Symbol("@TagType_str")
+ Symbol("@disable_warn_order")
+ Symbol("@reset_warn_order")
+ Symbol("@set_warn_order")
+ Symbol("@ts_str")
+ :AbstractObserver
+ :AutoMPO
+ :DMRGObserver
+ :ITensor
+ :ITensors
+ :Index
+[...]
+```
+Of course this is a very long list (and the methods are returned as `Symbol`s, which are like strings but not as easy to work with). However, we can convert the list to strings and filter the strings to find functions we are interested in, for example:
+```julia
+julia> filter(x -> contains(x, "common") && contains(x, "ind"), String.(names(ITensors)))
+8-element Array{String,1}:
+ "common_siteind"
+ "common_siteinds"
+ "commonind"
+ "commonindex"
+ "commoninds"
+ "hascommoninds"
+ "noncommonind"
+ "noncommoninds"
+```
+
+Julia types do not have member functions, so people coming from object oriented programming languages may find that at first it is more difficult to find methods that are applicable to a certain type. However, Julia has many fantastic tools for introspection that we can use to make this task easier.
+
 ## Make a small project based on ITensors.jl
 
 Once you start to have longer code, you will want to put your
 code into one or more files. For example, you may have a short script
 with one or more functions based on ITensors.jl:
-```
+```julia
 # my_itensor_script.jl
 using ITensors
 
@@ -569,79 +728,6 @@ Note that you will have to recompile ITensors with the command
 in order to keep the system image updated. We hope to make this
 process more automated in the future.
 
-## Multithreading Support
-
-There are two possible sources of parallelization available in 
-ITensors.jl, both external to the package right now. These are:
- - BLAS/LAPACK multithreading (through whatever flavor you are using, i.e. OpenBLAS or MKL).
- - The Strided.jl package, which implements a multithreaded array permutation.
-
-The BLAS/LAPACK multithreading can be controlled in the usual way with 
-environment variables, or within Julia. So for example, to control 
-from Julia, you would do:
-```julia
-julia> using LinearAlgebra
-
-julia> BLAS.vendor()  # Check which BLAS you are using
-:mkl
-
-julia> BLAS.set_num_threads(4)
-
-julia> ccall((:MKL_GET_MAX_THREADS, Base.libblas_name), Cint, ())
-4
-
-julia> BLAS.set_num_threads(2)
-
-julia> ccall((:MKL_GET_MAX_THREADS, Base.libblas_name), Cint, ())
-2
-```
-if you are using OpenBLAS, the command would be something like 
-`ccall((:openblas_get_num_threads, Base.libblas_name), Cint, ())`.
-
-Alternatively, you can use environment variables, so at your command 
-line prompt you would use:
-```
-$ export MKL_NUM_THREADS=4
-```
-if you are using MKL or
-```
-$ export OPENBLAS_NUM_THREADS=4
-```
-if you are using OpenBLAS. We would highly recommend using MKL (see
-the installation instructions for how to do that), especially if you 
-are using an Intel chip. In general, we have not found MKL/OpenBLAS 
-multithreading to help much in the context of common ITensor applications
-(like DMRG), but your mileage may vary and it would depend highly on the 
-problem you are studying. 
-How well BLAS multithreading will work would depend on how much your 
-calculations are dominated by matrix multiplications (which is not 
-always the case, especially if you are using QN conservation).
-
-Then, a separate level of mutlithreading could be turned on, which is 
-native Julia multithreading. Right now in ITensors.jl, this would 
-only control array permutation functions we use from 
-[Strided.jl](https://github.com/Jutho/Strided.jl). You would set it 
-with the environment variable `JULIA_NUM_THREADS`, for example:
-```julia
-julia> Threads.nthreads() # By default it is probably off
-1
-```
-Then if you set `export JULIA_NUM_THREADS=4` at your command line, 
-you would see the next time you start up Julia:
-```julia
-julia> Threads.nthreads()
-4
-```
-As of this writing, we have not found that using that kind of 
-multithreading has helped much in the context of DMRG calculation, 
-but your mileage may vary. Also note that the two kinds of multithreading
-(BLAS vs. native Julia) may compete with each other for resources,
-so it is recommended you turn one or the other off.
-
-We plan to incorporate our own multithreading with Julia's native 
-multithreading capabilities, for example to parallelize over block 
-sparse contractions. Stay tuned for that!
-
 ## Benchmarking and profiling
 
 Julia has great built-in tools for benchmarking and profiling.
@@ -670,8 +756,8 @@ Advanced users might notice something strange about the definition
 of the ITensor type, that it is often not "type stable". Some of 
 this is by design. The definition for ITensor is:
 ```julia
-mutable struct ITensor{N}
-  inds::IndexSet{N}
+mutable struct ITensor
+  inds::IndexSet
   store::TensorStorage
 end
 ```
@@ -688,7 +774,7 @@ julia> A = randomITensor(i, i');
 julia> @code_warntype A[i=>1, i'=>2]
 Variables
   #self#::Core.Compiler.Const(getindex, false)
-  T::ITensor{1}
+  T::ITensor
   ivs::Tuple{Pair{Index{Int64},Int64}}
   p::Tuple{Union{Nothing, Int64}}
   vals::Tuple{Any}
@@ -703,7 +789,7 @@ Body::Number
 │   %7  = Base.broadcasted(ITensors.val, ivs)::Base.Broadcast.Broadcasted{Base.Broadcast.Style{Tuple},Nothing,typeof(val),Tuple{Tuple{Pair{Index{Int64},Int64}}}}
 │   %8  = Base.materialize(%7)::Tuple{Int64}
 │         (vals = (%6)(%8, p))
-│   %10 = Core.tuple(T)::Tuple{ITensor{1}}
+│   %10 = Core.tuple(T)::Tuple{ITensor}
 │   %11 = Core._apply_iterate(Base.iterate, Base.getindex, %10, vals)::Number
 │   %12 = Core.typeassert(%11, ITensors.Number)::Number
 └──       return %12
@@ -719,11 +805,32 @@ So why is it designed this way? The main reason is to allow more
 generic and dynamic code than traditional, statically-typed Arrays.
 This allows us to have code like:
 ```julia
-A = randomITensor(i', i)
-A .*= 2+1im
+julia> i = Index(2, "i")
+(dim=2|id=811|"i")
+
+julia> A = emptyITensor(i', i);
+
+julia> @show A;
+A = ITensor ord=2
+Dim 1: (dim=2|id=811|"i")'
+Dim 2: (dim=2|id=811|"i")
+NDTensors.Empty{Float64,NDTensors.Dense{Float64,Array{Float64,1}}}
+ 2×2
+
+
+
+julia> A[i' => 1, i => 2] = 1.2;
+
+julia> @show A;
+A = ITensor ord=2
+Dim 1: (dim=2|id=811|"i")'
+Dim 2: (dim=2|id=811|"i")
+NDTensors.Dense{Float64,Array{Float64,1}}
+ 2×2
+ 0.0  1.2
+ 0.0  0.0
 ```
-Here, the type of the storage of A is changed in-place (allocations
-are performed only when needed).
+Here, the type of the storage of A is changed in-place. It starts as an `Empty` storage, a special trivial storage. When we set an element, we then allocate the appropriate storage. Allocations are performed only when needed, so if another element is set then no allocation is performed.
 More generally, this allows ITensors to have more generic in-place 
 functionality, so you can write code where you don't know what the
 storage is until runtime.

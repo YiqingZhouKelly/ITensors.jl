@@ -94,6 +94,26 @@ using ITensors,
     @test_throws ErrorException op("β", s2, s1)
   end
 
+  @testset "Custom OpName with long name" begin
+    function ITensors.op(::OpName"my_favorite_operator",
+                         ::SiteType"S=1/2",
+                         s::Index)
+      Op = emptyITensor(s', dag(s))
+      Op[s'=>1,s=>1] = 0.11 
+      Op[s'=>1,s=>2] = 0.12
+      Op[s'=>2,s=>1] = 0.21
+      Op[s'=>2,s=>2] = 0.22
+      return Op
+    end
+
+    s = Index(2, "S=1/2, Site")
+    Sz = op("my_favorite_operator", s)
+    @test Sz[s'=>1,s=>1] ≈ 0.11
+    @test Sz[s'=>1,s=>2] ≈ 0.12
+    @test Sz[s'=>2,s=>1] ≈ 0.21
+    @test Sz[s'=>2,s=>2] ≈ 0.22
+  end
+
   @testset "op with more than two indices" begin
     ITensors.space(::SiteType"qubit") = 2
 
@@ -287,9 +307,23 @@ using ITensors,
   end
 
   @testset "Error for undefined tag in siteinds,space system" begin
-    @test_throws MethodError siteinds("Missing",10)
-    @test_throws MethodError siteind("Missing",3)
-    @test_throws MethodError siteind("Missing")
+    @test_throws ErrorException siteinds("Missing",10)
+    @test_throws ErrorException siteind("Missing",3)
+    @test isnothing(siteind("Missing"))
+  end
+
+  @testset "Various ops input types" begin
+    s = siteinds("S=1/2", 4)
+
+    # Vector{Tuple{String,Int}} input
+    oa = ops(s, [("Sz", n) for n in 1:length(s)])
+    @test length(oa) == length(s)
+    @test norm(oa[2]-op("Sz",s,2)) < 1E-8
+
+    # Vector{Tuple} input
+    oa = ops(s, Tuple[("Sz", n) for n in 1:length(s)])
+    @test length(oa) == length(s)
+    @test norm(oa[2]-op("Sz",s,2)) < 1E-8
   end
 
 end

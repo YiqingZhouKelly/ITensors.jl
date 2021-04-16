@@ -16,15 +16,49 @@ using KrylovKit
 using LinearAlgebra
 using NDTensors
 using PackageCompiler
+using Pkg
 using Printf
 using Random
 using StaticArrays
 using TimerOutputs
 
 #####################################
+# NDTensors (definitions that will be moved to NDTensors
+# module)
+#
+include("NDTensors/NDTensors.jl")
+
+#####################################
+# ContractionSequenceOptimization
+#
+include("ContractionSequenceOptimization/ContractionSequenceOptimization.jl")
+using .ContractionSequenceOptimization
+
+#####################################
+# Directory helper functions (useful for
+# running examples)
+#
+src_dir() = dirname(pathof(@__MODULE__))
+pkg_dir() = joinpath(src_dir(), "..")
+examples_dir() = joinpath(pkg_dir(), "examples")
+
+#####################################
+# Determine version and uuid of the package
+#
+_parse_project_toml(field::String) =
+  Pkg.TOML.parsefile(joinpath(pkg_dir(), "Project.toml"))[field]
+version() = VersionNumber(_parse_project_toml("version"))
+uuid() = Base.UUID(_parse_project_toml("uuid"))
+
+#####################################
 # Exports
 #
 include("exports.jl")
+
+#####################################
+# Imports
+#
+include("imports.jl")
 
 #####################################
 # Global Variables
@@ -62,6 +96,7 @@ include("qn/qnitensor.jl")
 # MPS/MPO
 #
 include("mps/abstractmps.jl")
+include("mps/deprecated.jl")
 include("mps/mps.jl")
 include("mps/mpo.jl")
 include("mps/sweeps.jl")
@@ -78,6 +113,7 @@ include("mps/dmrg.jl")
 include("physics/sitetype.jl")
 include("physics/lattices.jl")
 include("physics/site_types/generic_sites.jl")
+include("physics/site_types/qubit.jl")
 include("physics/site_types/spinhalf.jl")
 include("physics/site_types/spinone.jl")
 include("physics/site_types/fermion.jl")
@@ -85,6 +121,11 @@ include("physics/site_types/electron.jl")
 include("physics/site_types/tj.jl")
 include("physics/fermions.jl")
 include("physics/autompo.jl")
+
+#####################################
+# Deprecations
+#
+include("deprecated.jl")
 
 #####################################
 # Argument parsing
@@ -102,12 +143,16 @@ include("packagecompile/compile.jl")
 #
 include("developer_tools.jl")
 
+function __init__()
+  resize!(empty!(INDEX_ID_RNGs), Threads.nthreads()) # ensures that we didn't save a bad object
+end
+
 #####################################
 # Precompile certain functions
 # (generated from precompile/make_precompile.jl
 # using SnoopCompile.jl)
 #
-include("../precompile/precompile.jl")
-_precompile_()
+#include("../precompile/precompile.jl")
+#_precompile_()
 
 end # module ITensors

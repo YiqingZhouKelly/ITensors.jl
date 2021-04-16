@@ -1,5 +1,23 @@
 
+#const IDType = UInt128
 const IDType = UInt64
+
+# Custom RNG for Index id
+# Vector of RNGs, one for each thread
+const INDEX_ID_RNGs = MersenneTwister[]
+@inline index_id_rng() = index_id_rng(Threads.threadid())
+@noinline function index_id_rng(tid::Int)
+  0 < tid <= length(INDEX_ID_RNGs) || _index_id_rng_length_assert()
+  if @inbounds isassigned(INDEX_ID_RNGs, tid)
+    @inbounds MT = INDEX_ID_RNGs[tid]
+  else
+    MT = MersenneTwister()
+    @inbounds INDEX_ID_RNGs[tid] = MT
+  end
+  return MT
+end
+@noinline _index_id_rng_length_assert() =  @assert false "0 < tid <= length(INDEX_ID_RNGs)"
+
 
 """
 An `Index` represents a single tensor index with fixed dimension `dim`. Copies of an Index compare equal unless their 
@@ -53,9 +71,14 @@ julia> tags(i)
 "l"
 ```
 """
-function Index(dim::Int; tags="", plev=0)
-  return Index(rand(IDType), dim, Neither, tags, plev)
+function Index(dim::Number; tags = "", plev = 0, dir = Neither)
+  return Index(rand(index_id_rng(), IDType), dim, dir, tags, plev)
 end
+
+# TODO: decide if these are good definitions, using
+# them for generic code in ContractionSequenceOptimization
+Base.Int(i::Index) = dim(i)
+length(i::Index) = 1
 
 """
     Index(dim::Integer, tags::Union{AbstractString, TagSet}; plev::Int = 0)
@@ -77,7 +100,7 @@ julia> tags(i)
 "l,tag"
 ```
 """
-Index(dim::Int,
+Index(dim::Number,
       tags::Union{AbstractString, TagSet};
       plev::Int = 0) = Index(dim; tags = tags, plev = plev)
 
@@ -101,8 +124,11 @@ space(i::Index) = i.space
 
 """
     dir(i::Index)
+    dir(iv::IndexVal)
 
-Obtain the direction of an Index (In, Out, or Neither).
+Return the direction of an `Index` (`ITensors.In`, `ITensors.Out`, or `ITensors.Neither`).
+For an `IndexVal` `iv`, returns returns the direction of the `Index` in the `IndexVal`,
+i.e. `dir(ind(iv))`.
 """
 dir(i::Index) = i.dir
 
@@ -171,10 +197,9 @@ end
 """
     copy(i::Index)
 
-Create a copy of index `i` with identical `id`, `dim`, `dir` and `tags`.
+Create a copy of index `i` with identical `id`, `space`, `dir` and `tags`.
 """
-Base.copy(i::Index) =
-  Index(id(i), copy(space(i)), dir(i), tags(i), plev(i))
+copy(i::Index) = Index(id(i), copy(space(i)), dir(i), tags(i), plev(i))
 
 """
     sim(i::Index; tags = tags(i), plev = plev(i), dir = dir(i))
@@ -183,18 +208,14 @@ Produces an `Index` with the same properties (dimension or QN structure)
 but with a new `id`.
 """
 sim(i::Index; tags = copy(tags(i)), plev = plev(i), dir = dir(i)) =
-  Index(rand(IDType), copy(space(i)), dir, tags, plev)
-
-# Used for internal use in NDTensors
-NDTensors.sim(i::Index) = sim(i)
+  Index(rand(index_id_rng(), IDType), copy(space(i)), dir, tags, plev)
 
 """
     dag(i::Index)
 
 Copy an index `i` and reverse its direction.
 """
-dag(i::Index) =
-  Index(id(i), copy(space(i)), -dir(i), tags(i), plev(i))
+dag(i::Index) = Index(id(i), copy(space(i)), -dir(i), tags(i), plev(i))
 
 # For internal use in NDTensors
 NDTensors.dag(i::Index) = dag(i)
@@ -310,11 +331,9 @@ julia> hastags(j, "n=4,Link")
 true
 ```
 """
-settags(i::Index, ts) = Index(id(i),
-                              copy(space(i)),
-                              dir(i),
-                              ts,
-                              plev(i))
+settags(i::Index, ts) = Index(id(i), copy(space(i)), dir(i), ts, plev(i))
+
+setspace(i::Index, s) = Index(id(i), s, dir(i), tags(i), plev(i))
 
 """
     addtags(i::Index,ts)
@@ -324,8 +343,7 @@ specified tags added to the existing ones.
 The `ts` argument can be a comma-separated 
 string of tags or a TagSet.
 """
-addtags(i::Index, ts) =
-  settags(i, addtags(tags(i), ts))
+addtags(i::Index, ts) = settags(i, addtags(tags(i), ts))
 
 """
     removetags(i::Index, ts)
@@ -500,7 +518,7 @@ Return the Index of the IndexVal.
 """
 NDTensors.ind(iv::IndexVal) = iv.ind
 
-NDTensors.ind(iv::Pair{<:Index,Int}) = iv.first
+NDTensors.ind(iv::Pair{<:Index}) = first(iv)
 
 """
     val(iv::IndexVal)
@@ -509,7 +527,7 @@ Return the value of the IndexVal.
 """
 val(iv::IndexVal) = iv.val
 
-val(iv::Pair{<:Index,Int}) = iv.second
+val(iv::Pair{<:Index}) = last(iv)
 
 """
     isindequal(i::Index, iv::IndexVal)
@@ -537,6 +555,8 @@ prime(iv::IndexVal,
 dag(iv::IndexVal) = IndexVal(dag(ind(iv)), val(iv))
 
 Base.adjoint(iv::IndexVal) = IndexVal(prime(ind(iv)), val(iv))
+
+dir(iv::IndexValOrPairIndexInt) = dir(ind(iv))
 
 #
 # Printing, reading, and writing
@@ -581,32 +601,32 @@ function readcpp(io::IO, ::Type{Index}; kwargs...)
   return Index(id, dim, dir, tags)
 end
 
-function HDF5.write(parent::Union{HDF5File, HDF5Group},
+function HDF5.write(parent::Union{HDF5.File, HDF5.Group},
                     name::AbstractString,
                     I::Index)
-  g = g_create(parent, name)
-  attrs(g)["type"] = "Index"
-  attrs(g)["version"] = 1
+  g = create_group(parent, name)
+  attributes(g)["type"] = "Index"
+  attributes(g)["version"] = 1
   write(g, "id", id(I))
   write(g, "dim", dim(I))
   write(g, "dir", Int(dir(I)))
   write(g, "tags", tags(I))
   write(g, "plev", plev(I))
   if typeof(space(I)) == Int
-    attrs(g)["space_type"] = "Int"
+    attributes(g)["space_type"] = "Int"
   elseif typeof(space(I)) == QNBlocks
-    attrs(g)["space_type"] = "QNBlocks"
+    attributes(g)["space_type"] = "QNBlocks"
     write(g,"space",space(I))
   else
     error("Index space type not recognized")
   end
 end
 
-function HDF5.read(parent::Union{HDF5File,HDF5Group},
+function HDF5.read(parent::Union{HDF5.File,HDF5.Group},
                    name::AbstractString,
                    ::Type{Index})
-  g = g_open(parent,name)
-  if read(attrs(g)["type"]) != "Index"
+  g = open_group(parent,name)
+  if read(attributes(g)["type"]) != "Index"
     error("HDF5 group or file does not contain Index data")
   end
   id = read(g,"id")
@@ -615,8 +635,8 @@ function HDF5.read(parent::Union{HDF5File,HDF5Group},
   tags = read(g,"tags",TagSet)
   plev = read(g,"plev")
   space_type = "Int"
-  if exists(attrs(g),"space_type")
-    space_type = read(attrs(g)["space_type"])
+  if haskey(attributes(g),"space_type")
+    space_type = read(attributes(g)["space_type"])
   end
   if space_type == "Int"
     space = dim

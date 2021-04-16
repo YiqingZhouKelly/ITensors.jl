@@ -1,15 +1,25 @@
-
 export
+# From external modules
+  # LinearAlgebra
+  tr,
+
 # Modules
   LinearAlgebra,
   NDTensors,
 
 # NDTensors module
   # Types
+  Block,
   Spectrum,
+  # Methods
   eigs,
   entropy,
   truncerror,
+  # Deprecated
+  addblock!,
+
+# ITensors.jl
+  index_id_rng,
 
 # argsdict/argsdict.jl
   argsdict,
@@ -22,10 +32,9 @@ export
   svd,
 
 # global_variables.jl
-  disable_warn_order!,
-  get_warn_order,
-  set_warn_order!,
-  reset_warn_order!,
+  # Methods
+
+  # Macros
   @disable_warn_order,
   @reset_warn_order,
   @set_warn_order,
@@ -54,9 +63,11 @@ export
   replacetags!,
   setdir,
   setprime,
+  setspace,
   settags,
   sim,
   space,
+  splitblocks,
   tags,
   val,
 
@@ -65,6 +76,8 @@ export
   IndexSet,
   Order,
   # Methods
+  allhastags,
+  anyhastags,
   dims,
   firstintersect,
   firstsetdiff,
@@ -79,6 +92,7 @@ export
   pushfirst,
   replaceind,
   replaceinds,
+  replaceprime,
   swapinds,
   setindex,
   swapind,
@@ -90,8 +104,9 @@ export
   # Types
   ITensor,
   # Methods
-  addblock!,
+  ⊙,
   addtags!,
+  apply,
   array,
   axpy!,
   blockoffsets,
@@ -105,14 +120,17 @@ export
   δ,
   diagITensor,
   dot,
+  eachnzblock,
   firstind,
   filterinds,
+  hadamard_product,
   hascommoninds,
   hasind,
   hasinds,
   hassameinds,
   ind,
   inds,
+  insertblock!,
   itensor,
   mul!,
   matrix,
@@ -126,9 +144,11 @@ export
   nzblocks,
   nzblock,
   nnz,
+  onehot,
   order,
   permute,
   prime!,
+  product,
   randn!,
   randomITensor,
   removetags!,
@@ -140,8 +160,7 @@ export
   scale!,
   scalar,
   setelt,
-  setwarnorder!,
-  store,
+  storage,
   setprime!,
   swapprime!,
   settags!,
@@ -165,17 +184,23 @@ export
 # tagset.jl
   # Types
   TagSet,
+  # Macros
+  @ts_str,
   # Methods
   addtags,
   hastags,
-  @ts_str,
 
 # mps/dmrg.jl
   dmrg,
 
 # mps/abstractmps.jl
+  # Macros
+  @preserve_ortho,
+  # Methods
   add,
   contract,
+  common_siteind,
+  common_siteinds,
   dag!,
   findfirstsiteind,
   findfirstsiteinds,
@@ -188,6 +213,7 @@ export
   lognorm,
   movesite,
   movesites,
+  ortho_lims,
   siteinds,
 
 # mps/mpo.jl
@@ -199,6 +225,7 @@ export
   orthogonalize,
   orthogonalize!,
   randomMPO,
+  truncate,
   truncate!,
   unique_siteind,
   unique_siteinds,
@@ -208,6 +235,8 @@ export
   MPS,
   # Methods
   ⋅,
+  correlation_matrix,
+  expect,
   inner,
   isortho,
   linkdim,
@@ -231,6 +260,7 @@ export
   # Types
   AbstractObserver,
   DMRGObserver,
+  DMRGMeasurement,
   NoObserver,
   # Methods
   checkdone!,
@@ -268,6 +298,10 @@ export
   noise,
   noise!,
   nsweep,
+  setmaxdim!,
+  setmindim!,
+  setcutoff!,
+  setnoise!,
   sweepnext,
 
 # physics/autompo.jl
@@ -286,6 +320,7 @@ export
   StateName,
   @StateName_str,
   op,
+  ops,
   OpName,
   @OpName_str,
   state,

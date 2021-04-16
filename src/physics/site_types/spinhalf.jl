@@ -1,4 +1,16 @@
 
+"""
+    space(::SiteType"S=1/2";
+          conserve_qns = false,
+          conserve_sz = conserve_qns,
+          conserve_szparity = false,
+          qnname_sz = "Sz",
+          qnname_szparity = "SzParity")
+
+Create the Hilbert space for a site of type "S=1/2".
+
+Optionally specify the conserved symmetries and their quantum number labels.
+"""
 function space(::SiteType"S=1/2";
                conserve_qns = false,
                conserve_sz = conserve_qns,
@@ -26,129 +38,102 @@ state(st::SiteType"S=1/2", ::StateName"↑") =
 state(st::SiteType"S=1/2", ::StateName"↓") =
   state(st, StateName("Dn"))
 
-function op!(Op::ITensor,
-             ::OpName"Sz",
-             ::SiteType"S=1/2",
-             s::Index)
-  Op[s'=>1, s=>1] = 0.5
-  Op[s'=>2, s=>2] = -0.5
-end
 
-op!(Op::ITensor,
-    ::OpName"Sᶻ",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("Sz"), t, s)
+op(::OpName"Z",::SiteType"S=1/2") =
+  [1  0
+   0 -1]
 
-function op!(Op::ITensor,
-             ::OpName"S+",
-             ::SiteType"S=1/2",
-             s::Index)
-  Op[s'=>1, s=>2] = 1.0
-end
 
-op!(Op::ITensor,
-    ::OpName"S⁺",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("S+"), t, s)
+op(::OpName"Sz",::SiteType"S=1/2") =
+  [0.5  0.0
+   0.0 -0.5]
 
-op!(Op::ITensor,
-    ::OpName"Splus",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("S+"), t, s)
+op(::OpName"Sᶻ",t::SiteType"S=1/2") = 
+  op(OpName("Sz"),t)
 
-function op!(Op::ITensor,
-             ::OpName"S-",
-             ::SiteType"S=1/2",
-             s::Index)
-  Op[s'=>2, s=>1] = 1.0
-end
 
-op!(Op::ITensor,
-    ::OpName"S⁻",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("S-"), t, s)
+op(::OpName"S+",::SiteType"S=1/2") =
+  [0  1
+   0  0]
 
-op!(Op::ITensor,
-    ::OpName"Sminus",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("S-"), t, s)
+op(::OpName"S⁺",t::SiteType"S=1/2") = 
+  op(OpName("S+"),t)
 
-function op!(Op::ITensor,
-             ::OpName"Sx",
-             ::SiteType"S=1/2",
-             s::Index)
-  Op[s'=>1, s=>2] = 0.5
-  Op[s'=>2, s=>1] = 0.5
-end
+op(::OpName"Splus",t::SiteType"S=1/2") = 
+  op(OpName("S+"),t)
 
-op!(Op::ITensor,
-    ::OpName"Sˣ",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("Sx"),t, s)
 
-function op!(Op::ITensor,
-             ::OpName"iSy",
-             ::SiteType"S=1/2",
-             s::Index)
-  Op[s'=>1, s=>2] = +0.5
-  Op[s'=>2, s=>1] = -0.5
-end
+op(::OpName"S-",::SiteType"S=1/2") =
+  [0  0
+   1  0]
 
-op!(Op::ITensor,
-    ::OpName"iSʸ",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("iSy"), t, s)
+op(::OpName"S⁻",t::SiteType"S=1/2") = 
+  op(OpName("S-"),t)
 
-function op!(Op::ITensor,
-             ::OpName"Sy",
-             ::SiteType"S=1/2",
-             s::Index)
-  complex!(Op)
-  Op[s'=>1, s=>2] = -0.5im
-  Op[s'=>2, s=>1] = 0.5im
-end
+op(::OpName"Sminus",t::SiteType"S=1/2") = 
+  op(OpName("S-"),t)
 
-op!(Op::ITensor,
-    ::OpName"Sʸ",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("Sy"), t, s)
 
-function op!(Op::ITensor,
-             ::OpName"S2",
-             ::SiteType"S=1/2",
-             s::Index)
-  Op[s'=>1, s=>1] = 0.75
-  Op[s'=>2, s=>2] = 0.75
-end
+op(::OpName"X",::SiteType"S=1/2") =
+  [0  1
+   1  0]
 
-op!(Op::ITensor,
-    ::OpName"S²",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("S2"), t, s)
 
-function op!(Op::ITensor,
-             ::OpName"ProjUp",
-             ::SiteType"S=1/2",
-             s::Index)
-  Op[s' => 1, s => 1] = 1
-end
+op(::OpName"Sx",::SiteType"S=1/2") =
+  [0.0  0.5
+   0.5  0.0]
 
-op!(Op::ITensor,
-    ::OpName"projUp",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("ProjUp"), t, s)
+op(::OpName"Sˣ",t::SiteType"S=1/2") = 
+  op(OpName("Sx"),t)
 
-function op!(Op::ITensor,
-             ::OpName"ProjDn",
-             ::SiteType"S=1/2",
-             s::Index)
-  Op[s' => 2, s => 2] = 1
-end
+op(::OpName"iY",::SiteType"S=1/2") =
+  [ 0 1
+   -1 0]
 
-op!(Op::ITensor,
-    ::OpName"projDn",
-    t::SiteType"S=1/2",
-    s::Index) = op!(Op, OpName("ProjDn"), t, s)
+op(::OpName"iSy",::SiteType"S=1/2") =
+  [ 0.0  0.5
+   -0.5  0.0]
+
+op(::OpName"iSʸ",t::SiteType"S=1/2") = 
+  op(OpName("iSy"),t)
+
+
+op(::OpName"Y",::SiteType"S=1/2") =
+  [0.0   -1.0im
+   1.0im  0.0  ]
+
+
+op(::OpName"Sy",::SiteType"S=1/2") =
+  [0.0   -0.5im
+   0.5im  0.0  ]
+
+op(::OpName"Sʸ",t::SiteType"S=1/2") = 
+  op(OpName("Sy"),t)
+
+
+op(::OpName"S2",::SiteType"S=1/2") =
+  [0.75  0.0
+   0.0   0.75]
+
+op(::OpName"S²",t::SiteType"S=1/2") = 
+  op(OpName("S2"),t)
+
+
+op(::OpName"ProjUp",::SiteType"S=1/2") =
+  [1  0
+   0  0]
+
+op(::OpName"projUp",t::SiteType"S=1/2") = 
+  op(OpName("ProjUp"),t)
+
+
+op(::OpName"ProjDn",::SiteType"S=1/2") =
+  [0  0
+   0  1]
+
+op(::OpName"projDn",t::SiteType"S=1/2") = 
+  op(OpName("ProjDn"),t)
+
 
 # Support the tag "SpinHalf" as equivalent to "S=1/2"
 
@@ -158,8 +143,8 @@ space(::SiteType"SpinHalf"; kwargs...) =
 state(::SiteType"SpinHalf", n::StateName) =
   state(SiteType("S=1/2"), n)
 
-op!(Op::ITensor, o::OpName, ::SiteType"SpinHalf", s::Index...) =
-  op!(Op, o, SiteType("S=1/2"), s...)
+op(o::OpName, ::SiteType"SpinHalf";kwargs...) =
+  op(o, SiteType("S=1/2");kwargs...)
 
 # Support the tag "S=½" as equivalent to "S=1/2"
 
@@ -169,6 +154,6 @@ space(::SiteType"S=½"; kwargs...) =
 state(::SiteType"S=½", n::StateName) =
   state(SiteType("S=1/2"), n)
 
-op!(Op::ITensor, o::OpName, ::SiteType"S=½", s::Index...) =
-  op!(Op, o, SiteType("S=1/2"), s...)
+op(o::OpName, ::SiteType"S=½";kwargs...) =
+  op(o, SiteType("S=1/2");kwargs...)
 

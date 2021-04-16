@@ -15,6 +15,10 @@
 ITensors is a library for rapidly creating correct and efficient
 tensor network algorithms. 
 
+The source code for ITensors can be found here: [https://github.com/ITensor/ITensors.jl](https://github.com/ITensor/ITensors.jl).  
+
+Additional documentation can be found on the ITensor website [itensor.org](https://itensor.org/).
+
 An ITensor is a tensor whose interface 
 is independent of its memory layout. ITensor indices are
 objects which carry extra information and which
@@ -62,17 +66,72 @@ We recommend using ITensors.jl with Intel MKL in order to get the best possible 
 If you use ITensors.jl in your work, for now please cite the [arXiv preprint](https://arxiv.org/abs/2007.14822):
 
 ```
-@misc{fishman2020itensor,
-    title={The ITensor Software Library for Tensor Network Calculations},
+@misc{itensor,
+    title={The \mbox{ITensor} Software Library for Tensor Network Calculations},
     author={Matthew Fishman and Steven R. White and E. Miles Stoudenmire},
     year={2020},
     eprint={2007.14822},
-    archivePrefix={arXiv},
-    primaryClass={cs.MS}
+    archivePrefix={arXiv}
 }
 ```
 
 ## Code Examples
+
+The ITensors.jl package contains a directory of examples, which we
+will continue to add to. You can find them online [here](https://github.com/ITensor/ITensors.jl/tree/master/examples).
+Additionally, once you have installed ITensors.jl you can find a local version
+of the examples in the directory `ITensors.examples_dir()`, and you can run them
+as follows from the Julia REPL:
+```julia
+julia> using ITensors
+
+julia> cd(ITensors.examples_dir())
+
+julia> readdir()
+7-element Array{String,1}:
+ "basic_ops"
+ "ctmrg"
+ "dmrg"
+ "gate_evolution"
+ "krylov_methods"
+ "src"
+ "trg"
+
+julia> cd("dmrg")
+
+julia> readdir()
+8-element Array{String,1}:
+ "1d_heisenberg.jl"
+ "1d_heisenberg_conserve_spin.jl"
+ "1d_hubbard_extended.jl"
+ "1d_ising_with_observer.jl"
+ "2d_heisenberg_conserve_spin.jl"
+ "2d_hubbard_conserve_momentum.jl"
+ "2d_hubbard_conserve_particles.jl"
+ "input_files"
+
+julia> include("1d_heisenberg.jl")
+sweeps = Sweeps
+1 cutoff=1.0E-11, maxdim=10, mindim=1, noise=0.0E+00
+2 cutoff=1.0E-11, maxdim=20, mindim=1, noise=0.0E+00
+3 cutoff=1.0E-11, maxdim=100, mindim=1, noise=0.0E+00
+4 cutoff=1.0E-11, maxdim=100, mindim=1, noise=0.0E+00
+5 cutoff=1.0E-11, maxdim=200, mindim=1, noise=0.0E+00
+
+After sweep 1 energy=-138.837988775764 maxlinkdim=10 time=13.760
+After sweep 2 energy=-138.937408365962 maxlinkdim=20 time=0.249
+After sweep 3 energy=-138.940084788852 maxlinkdim=100 time=1.867
+After sweep 4 energy=-138.940086091070 maxlinkdim=100 time=3.824
+After sweep 5 energy=-138.940086113999 maxlinkdim=122 time=4.527
+Final energy = -138.940086113999
+
+julia> pwd()
+"[path_to_package_installation]/ITensors/examples/dmrg"
+```
+You can use your favorite text editor to view these examples. If you
+would like to modify them, either copy them into your own directory,
+or checkout ITensors.jl in development mode using the instructions
+in [Developing ITensors.jl](@ref).
 
 ### Basic Overview
 
@@ -244,7 +303,7 @@ It originates in physics with the purpose of finding
 eigenvectors of Hamiltonian (energy) matrices which model
 the behavior of quantum systems.
 
-```jldoctest; output=false, filter=[r"After sweep [1-5] energy=\-[0-9]{3}\.[0-9]{10,16} maxlinkdim=[0-9]{1,3} time=[0-9]{1,2}\.[0-9]{3}", r"Final energy = \-138\.[0-9]{10,16}"]
+```jldoctest; output=false, filter=[r"After sweep [1-5] energy=\-[0-9]{3}\.[0-9]{10,16} maxlinkdim=[0-9]{1,3} maxerr=[0-9]{1,2}\.[0-9]{1,3}E\-[0-9]{1,2} time=[0-9]{1,2}\.[0-9]{3}", r"Final energy = \-138\.[0-9]{10,16}"]
 using ITensors
 let
   # Create 100 spin-one indices
@@ -271,8 +330,8 @@ let
   # for each sweep and maximum truncation cutoff
   # used when adapting internal dimensions:
   sweeps = Sweeps(5)
-  maxdim!(sweeps, 10,20,100,100,200)
-  cutoff!(sweeps, 1E-10)
+  setmaxdim!(sweeps, 10,20,100,100,200)
+  setcutoff!(sweeps, 1E-10)
   @show sweeps
 
   # Run the DMRG algorithm, returning energy 
@@ -292,10 +351,10 @@ sweeps = Sweeps
 4 cutoff=1.0E-10, maxdim=100, mindim=1, noise=0.0E+00
 5 cutoff=1.0E-10, maxdim=200, mindim=1, noise=0.0E+00
 
-After sweep 1 energy=-137.845841178879 maxlinkdim=9 time=8.538
-After sweep 2 energy=-138.935378608196 maxlinkdim=20 time=0.316
-After sweep 3 energy=-138.940079710492 maxlinkdim=88 time=1.904
-After sweep 4 energy=-138.940086018149 maxlinkdim=100 time=4.179
-After sweep 5 energy=-138.940086075413 maxlinkdim=96 time=4.184
-Final energy = -138.94008607296038
+After sweep 1 energy=-137.954199761732 maxlinkdim=9 maxerr=2.43E-16 time=9.356
+After sweep 2 energy=-138.935058943878 maxlinkdim=20 maxerr=4.97E-06 time=0.671
+After sweep 3 energy=-138.940080155429 maxlinkdim=92 maxerr=1.00E-10 time=4.522
+After sweep 4 energy=-138.940086009318 maxlinkdim=100 maxerr=1.05E-10 time=11.644
+After sweep 5 energy=-138.940086058840 maxlinkdim=96 maxerr=1.00E-10 time=12.771
+Final energy = -138.94008605883985
 ```

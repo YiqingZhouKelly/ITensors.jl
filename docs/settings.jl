@@ -18,16 +18,27 @@ settings = Dict(
                                  "ITensor" => "ITensorType.md",
                                  "MPS and MPO" => "MPSandMPO.md",
                                  "QN" => "QN.md",
+                                 "SiteType and op" => "SiteType.md",
                                  "DMRG" => [
                                             "DMRG.md",
+                                            "Sweeps.md",
                                             "ProjMPO.md",
-                                            "ProjMPOSum.md"
+                                            "ProjMPOSum.md",
+                                            "Observer.md",
+                                            "DMRGObserver.md"
                                            ],
                                  "AutoMPO" => "AutoMPO.md"
                                 ],
-             "Advanced usage guide" => "AdvancedUsageGuide.md",
+             "Advanced usage guide" => [
+                                        "Advanced usage guide" => "AdvancedUsageGuide.md",
+                                        "Multithreading" => "Multithreading.md",
+                                        "Symmetric tensor background and usage" => "QNTricks.md",
+                                        "Timing and profiling" => "CodeTiming.md",
+                                        "Contraction sequence optimization" => "ContractionSequenceOptimization.md"
+                                       ]
            ],
-  :format => Documenter.HTML(prettyurls = false),
+  :format => Documenter.HTML(assets = ["assets/favicon.ico"],
+                             prettyurls = false),
   :doctest => true,
   :checkdocs => :none,
  )

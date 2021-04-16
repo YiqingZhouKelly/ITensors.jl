@@ -1,3 +1,160 @@
+ITensor v0.2.0 Release Notes
+==============================
+- Remove size type parameter from ITensor and IndexSet (PR #591) (@kshyatt).
+- Add support for using end in setindex! for ITensors (PR #596) (@mtfishman).
+- Contraction sequence optimization (PR #589) (@mtfishman).
+- Make TagSet code cleaner and more generic, and improve constructor from String performance (PR #610) (@saolof).
+- Define some missing methods for AbstractMPS broadcasting (#609) (@kshyatt).
+- ITensor constructors from Array now only convert to floating point for `Array{Int}` and `Array{Complex{Int}}`. That same conversion is added for QN ITensor constructors to be consistent with non-QN versions (PR #620) (@mtfishman).
+- New ITensor constructors like `itensor(Int, [0 1; 1 0], i, j)` to specify the exact element type desired (PR #620) (@mtfishman).
+- Speed up randomITensor with undef constructor (PR #616) (@emstoudenmire).
+- Fix definition of Adagdn for Electron (PR #615) (@emstoudenmire).
+- Make ops less strict about input (PR #602) (@emstoudenmire).
+- Add onehot as new name for setelt (PR #580) (@emstoudenmire).
+- Support randomMPS(ComplexF64,s,chi) (PR #377) (@emstoudenmire).
+
+Deprecations:
+- `store` is deprecated in favor of `storage` for getting the storage of an ITensor. Similarly `ITensors.setstore[!]` -> `ITensors.setstorage[!]`.
+
+ITensors v0.1.41 Release Notes
+==============================
+- Add "Qubit" site type (alias for "S=1/2"), along with many quantum gate definitions (PR #592) (@emstoudenmire).
+
+ITensors v0.1.40 Release Notes
+==============================
+- Remove eigen QN fix code (simplify ITensors eigen code by handling QNs better in NDTensors eigen) (PR #587) (@emstoudenmire).
+- More general polar decomposition that works with QNs (PR #588) (@mtfishman).
+- Bump to v0.1.28 of NDTensors, which includes some bug fixes for BlockDiag storage and makes ArrayInterface setindex compatiblity more general (NDTensors PR #68) (@mtfishman).
+
+ITensors v0.1.39 Release Notes
+==============================
+- Add Pauli X,Y,Z to S=1/2 site type (PR #576) (@emstoudenmire).
+- Add truncation error output to DMRG (PR #577) (@emstoudenmire).
+- Bump StaticArrays version to v1.0 (PR #578) (@mtfishman).
+- Fix orthogonalize when there are missing MPS link indices (PR #579) (@mtfishman). 
+- Simplify MPO * MPO contraction and make more robust for MPOs with multiple site indices per tensor (PR #585) (@mtfishman).
+
+ITensors v0.1.38 Release Notes
+==============================
+- New MPS/MPO index manipulation interface (PR #575) (@mtfishman).
+- Add support for `inner(::MPS, ::MPO, ::MPS)` with multiple siteinds per tensor (PR #573) (@mtfishman).
+- Fix `MPO*MPS`, `MPO*MPO` for system sizes 1 and 2 (PR #572) (@mtfishman).
+- Add generic support for scalar ITensor contraction (PR #569) (@mtfishman).
+- Fix and add tests for printing QN diag ITensors (PR #568) (@mtfishman).
+
+ITensors v0.1.37 Release Notes
+==============================
+- Bump to NDTensors v0.1.23 which fixes a bug in block sparse multithreading when a block sparse tensor contraction results in a tensor with no blocks (PR #565) (@mtfishman).
+
+ITensors v0.1.36 Release Notes
+==============================
+- Bump to v0.1.22 of NDTensors which introduces block sparse multithreading. Add documentation and examples for using block sparse multithreading (PR #561) (@mtfishman).
+- Make dmrg set ortho center to 1 before starting (PR #562) (@emstoudenmire).
+
+ITensors v0.1.35 Release Notes
+==============================
+Closed issues:
+
+- Should we define iterate for TagSet? (#542)
+- AutoMPO slower than expected (#555)
+
+Merged pull requests:
+
+- Implement iterate for TagSet (#553) (@tomohiro-soejima)
+- Add check for Index arrows for map! (includes sum and difference etc) (#554) (@emstoudenmire)
+- Optimize AutoMPO (#556) (@mtfishman)
+- Add checks for common site indices in DMRG, dot, and inner (#557) (@mtfishman)
+- Fix and Improve DMRGObserver Constructor (#558) (@emstoudenmire)
+- Update HDF5 to versions 0.14, 0.15 (#559) (@emstoudenmire)
+
+ITensors v0.1.34 Release Notes
+==============================
+* Allow operator names in the `op` system that are longer than 8 characters (PR #551).
+
+ITensors v0.1.33 Release Notes
+==============================
+* Fix bug introduced in v0.1.32 involving inner(::MPS, ::MPS) if the MPS have more than one site Index per tensor (PR #549).
+
+ITensors v0.1.32 Release Notes
+==============================
+* Update to NDTensors v0.1.21, which includes a bug fix for scalar-like tensor contractions involving mixed element types (NDTensors PR #58).
+* Docs for observer system and DMRGObserver (PR #546).
+* Add `ITensors.@debug_check`, `ITensors.enable_debug_checks()`, and `ITensors.disable_debug_checks()` for denoting that a block of code is a debug check, and turning on and off debug checks (off by default). Use to check for repeated indices in IndexSet construction and other checks (PR #547).
+* Add `index_id_rng()`, an RNG specifically for generating Index IDs. Set the seed with `Random.seed!(index_id_rng(), 1234)`. This makes the random stream of number seperate for Index IDs and random elements, and helps avoid Index ID clashes with reading and writing (PR #547).
+* Add back checking for proper QN Index directions in contraction (PR #547).
+
+ITensors v0.1.31 Release Notes
+==============================
+* Update to NDTensors v0.1.20, which includes some more general block sparse slicing operations as well as optimizations for contracting scalar-like (length 1) tensors (NDTensors PR #57).
+* Add flux of IndexVal functionality which returns the QN multiplied by the direction of the Index. Make `qn` consistently return the bare QN. Might be breaking for people who were calling `qn(::IndexVal)` and related functions, since now it consistently returns the QN not modified by the Index direction (PR #543).
+* Introduce `splitblocks` function for Index, ITensor and MPS/MPO. This splits the QNs of the specified indices into blocks of size 1 and drops nonzero blocks, which can make certain tensors more sparse and improve efficiency. This is particularly useful for Hamiltonian MPOs. Thanks to Johannes Hauschild for pointing out this strategy (PR #540).
+* Add Ising YY and ZZ gates to qubits examples (PR #539).
+
+ITensors v0.1.30 Release Notes
+==============================
+* Update to NDTensors v0.1.19, which includes various block sparse optimizations. The primary change is switching the block-offset storage from a sorted vector to a dictionary for O(1) lookup of the offsets. Note this may be a slightly breaking change for users that were doing block operations of block sparse tensors since now blocks have a special type Block that stores a tuple of the block location and the hash (NDTensors PR #54 and ITensors PR #538).
+
+ITensors v0.1.29 Release Notes
+==============================
+* Add global flag for combining before contracting QN ITensors, control with enable/disable_combine_contract!(). This can speed up the contractions of high order QN ITensors (PR #536).
+* Fix bug when using "end" syntax when indexing ITensors where the Index ordering doesn't match the internal ITensor Index order (PR #537).
+* Increase NDTensors to v0.1.18, which includes a variety of dense and sparse contraction optimizations.
+
+ITensors v0.1.28 Release Notes
+==============================
+* Add support for setting slices of an ITensor (PR #535).
+* Add bond dimension maximum in addition of MPS/MPO based on sums of bond dimensions of original MPS/MPO (PR # 535).
+* Add TBLIS contraction support. When TBLIS.jl is installed, the command "using TBLIS" turns on TBLIS support. enable_tblis!() and disable_tblis!() also turn TBLIS backend on and off (PR #533).
+* Add DMRG and contraction examples of using TBLIS contraction backend (PR #533).
+
+ITensors v0.1.27 Release Notes
+==============================
+* Use LAPACK's gesdd by default in SVD (PR #531).
+
+ITensors v0.1.26 Release Notes
+==============================
+* Introduce a density matrix algorithm for summing arbitrary numbers of MPS/MPO (non-QN and QN) (PR #528).
+* Introduce @preserve_ortho macro, which indicates that a block of code preserves the orthogonality limits of a specified MPS/MPO or set of MPS/MPO (PR #528).
+* Introduce the ortho_lims(::MPS/MPO) function, that returns the orthogonality limits as a range (PR #528).
+* Improves the (::Number * ::MPS/MPO) function by ensuring the number scales an MPS/MPO tensor within the orthogonality limits (PR #528).
+* Improve functionality for making an MPO that is a product of operators. In particular, MPO(s, "Id") now works for QN sites, and it adds notation like: MPO(s, n -> isodd(n) ? "S+" : "S-") (PR #528).
+* Add SiteType and op documentation.
+* Add unexported function ITensors.examples_dir to get examples directory.
+
+ITensors v0.1.25 Release Notes
+==============================
+* Introduce imports.jl to organize import statements (PR #511).
+* Add TRG and isotropic CTMRG examples (PR #511).
+* Add example for 2D Hubbard model with momentum conservation around the cylinder (PR #511).
+* Fix fermion string issue (PR #519)
+
+ITensors v0.1.24 Release Notes
+==============================
+* Generalize `tr(::MPO)` for MPOs with more an one pair of site indices per site (PR #509)
+* Add `tr(::ITensor)` to trace pairs of indices of an ITensor (PR #509)
+* Add stacktrace to warn tensor order (PR #498)
+
+ITensors v0.1.23 Release Notes
+==============================
+* Add lastindex(A::ITensor, n::Int) to define A[end, end]. (PR #495)
+* Define hastags(A::ITensor, ts) and related functions. (PR #495)
+* Fix some broadcasting. Add Hadamard product and division. (PR #495)
+* Add tr(::MPO) (PR #492)
+* Add docstrings and docs for apply(::Vector{ITensor}, ::MPS) (PR #492)
+* Add docstrings for IndexSet set functions like commoninds, uniqueinds, etc. (PR #492)
+
+ITensors v0.1.22 Release Notes
+==============================
+* Add MPS/MPO circuit evolution with the apply function (PR #480)
+* Improve MPS docs (PR #488)
+* dense function for MPS/MPO (PR #483)
+* MPO sampling (PR #486)
+* Allow conserving Sz up or down in Fermion type (PR #482)
+* Docstrings for siteinds method (PR #481)
+* movesites function for MPS/MPO for permuting sites (PR #477)
+* New Order value type for representing the order of a tensor at compile time (PR #475)
+* Add generic "F" operator for non-fermion site types (PR #469)
+
 ITensors v0.1.21 Release Notes
 ==============================
 * Add parity conservation to S=1/2 sitetype (PR #467)

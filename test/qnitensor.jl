@@ -25,8 +25,8 @@ Random.seed!(1234)
     T = ITensor(A, i', dag(i))
     @test flux(T) == QN(0)
     @test nnzblocks(T) == 2
-    @test (1,1) in nzblocks(T)
-    @test (2,2) in nzblocks(T)
+    @test Block(1,1) in nzblocks(T)
+    @test Block(2,2) in nzblocks(T)
     @test T[1, 1] == 1.0
     @test T[2, 2] == 2.0
     @test T[2, 3] == 3.0
@@ -36,8 +36,8 @@ Random.seed!(1234)
     T = itensor(A, i', dag(i))
     @test flux(T) == QN(0)
     @test nnzblocks(T) == 2
-    @test (1,1) in nzblocks(T)
-    @test (2,2) in nzblocks(T)
+    @test Block(1,1) in nzblocks(T)
+    @test Block(2,2) in nzblocks(T)
     @test T[1, 1] == 1.0
     @test T[2, 2] == 2.0
     @test T[2, 3] == 3.0
@@ -47,8 +47,8 @@ Random.seed!(1234)
     T = ITensor(A, i', dag(i); tol = 1e-9)
     @test flux(T) == QN(0)
     @test nnzblocks(T) == 2
-    @test (1,1) in nzblocks(T)
-    @test (2,2) in nzblocks(T)
+    @test Block(1,1) in nzblocks(T)
+    @test Block(2,2) in nzblocks(T)
     @test T[1, 1] == 1.0
     @test T[2, 2] == 2.0
     @test T[2, 3] == 3.0
@@ -61,7 +61,7 @@ Random.seed!(1234)
     T = ITensor(A, i', dag(i); tol = 1e-8)
     @test flux(T) == QN(0)
     @test nnzblocks(T) == 1
-    @test (2,2) in nzblocks(T)
+    @test Block(2,2) in nzblocks(T)
     @test T[1, 1] == 0.0
     @test T[2, 2] == 2.0
     @test T[2, 3] == 3.0
@@ -74,7 +74,7 @@ Random.seed!(1234)
     T = ITensor(A, i', dag(i); tol = 1e-8)
     @test flux(T) == QN(-1)
     @test nnzblocks(T) == 1
-    @test (1,2) in nzblocks(T)
+    @test Block(1,2) in nzblocks(T)
     @test T[1, 1] == 0.0
     @test T[1, 2] == 2.0
     @test T[1, 3] == 3.0
@@ -87,6 +87,60 @@ Random.seed!(1234)
          1e-5 1e-10 2e-10;
          2e-9 1e-10 4e-10]
     @test_throws ErrorException ITensor(A, i', dag(i); tol = 1e-8)
+  end
+
+  @testset "QN ITensor Array constructor view behavior" begin
+    d = 2
+    i = Index([QN(0) => d ÷ 2, QN(1) => d ÷ 2])
+
+    # no view
+    A = diagm(randn(Float64, d))
+    T = itensor(A, i', dag(i); tol = 1e-12)
+    @test storage(T) isa NDTensors.BlockSparse{Float64}
+    A[1, 1] = 2.0
+    T[1, 1] ≠ 2.0
+
+    # no view
+    A = diagm(rand(Int, d))
+    T = itensor(Int, A, i', dag(i); tol = 1e-12)
+    @test storage(T) isa NDTensors.BlockSparse{Int}
+    A[1, 1] = 2
+    T[1, 1] ≠ 2
+
+    # no view
+    A = diagm(rand(Int, d))
+    T = itensor(A, i', dag(i); tol = 1e-12)
+    @test storage(T) isa NDTensors.BlockSparse{Float64}
+    A[1, 1] = 2
+    T[1, 1] ≠ 2
+
+    # no view
+    A = diagm(randn(Float64, d))
+    T = ITensor(A, i', dag(i); tol = 1e-12)
+    @test storage(T) isa NDTensors.BlockSparse{Float64}
+    A[1, 1] = 2
+    T[1, 1] ≠ 2
+
+    # no view
+    A = diagm(rand(Int, d))
+    T = ITensor(Int, A, i', dag(i); tol = 1e-12)
+    @test storage(T) isa NDTensors.BlockSparse{Int}
+    A[1, 1] = 2
+    T[1, 1] ≠ 2
+
+    # no view
+    A = diagm(rand(Int, d))
+    T = ITensor(A, i', dag(i); tol = 1e-12)
+    @test storage(T) isa NDTensors.BlockSparse{Float64}
+    A[1, 1] = 2
+    T[1, 1] ≠ 2
+  end
+
+  @testset "Constructor Leads to No Blocks" begin
+    i=Index(QN(0)=>2,QN(1)=>3;tags="i")
+    j=Index(QN(1)=>2,QN(2)=>1;tags="j")
+    @test_throws ErrorException ITensor(i,j)
+    @test_throws ErrorException ITensor(QN(0),i,j)
   end
 
   @testset "ITensor iteration" begin
@@ -201,6 +255,34 @@ Random.seed!(1234)
     @test nnzblocks(B) == 2
   end
 
+  @testset "Complex Number Operations" begin
+    i = Index([QN(0)=>1,QN(1)=>2],"i")
+    j = Index([QN(0)=>3,QN(1)=>4,QN(2)=>5],"j")
+
+    A = randomITensor(ComplexF64,QN(0),i,dag(j))
+
+    @test flux(A) == QN(0)
+    @test nnzblocks(A) == 2
+
+    rA = real(A)
+    iA = imag(A)
+    @test nnzblocks(rA) == nnzblocks(A)
+    @test nnzblocks(iA) == nnzblocks(A)
+    @test norm(rA+1im*iA - A) < 1E-8
+    @test eltype(rA) == Float64
+    @test eltype(iA) == Float64
+
+    cA = conj(A)
+    @test eltype(cA) == ComplexF64
+    @test norm(cA) ≈ norm(A)
+
+    B = randomITensor(Float64,QN(0),i,dag(j))
+
+    cB = conj(B)
+    @test eltype(cB) == Float64
+    @test norm(cB) ≈ norm(B)
+  end
+
 
   @testset "QN setelt" begin
     i = Index(QN(0)=>2,QN(1)=>2,tags="i")
@@ -299,6 +381,14 @@ Random.seed!(1234)
     for ii in dim(i), jj in dim(j)
       @test 2*A[i=>ii,j=>jj] == B[i=>ii,j=>jj]
     end
+  end
+
+  @testset "Check arrows when summing" begin
+    s = siteinds("S=1/2",4;conserve_qns=true)
+    Tout = randomITensor(QN("Sz"=>2),s[2],s[1],s[3],s[4])
+    Tin = randomITensor(QN("Sz"=>2),dag(s[1]),dag(s[2]),dag(s[3]),dag(s[4]))
+    @test norm(Tout-Tout) < 1E-10 # this is ok
+    @test_throws ErrorException (Tout+Tin)         # not ok
   end
 
   @testset "Copy" begin
@@ -728,8 +818,8 @@ Random.seed!(1234)
       Ut = F.Vt
 
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(D) isa NDTensors.DiagBlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(D) isa NDTensors.DiagBlockSparse
 
       u = commonind(D,U)
       up = uniqueind(D,U)
@@ -769,8 +859,8 @@ Random.seed!(1234)
       D, U, spec = F
       Ut = F.Vt
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(D) isa NDTensors.DiagBlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(D) isa NDTensors.DiagBlockSparse
 
       u = commonind(D, U)
       up = uniqueind(D, U)
@@ -817,8 +907,8 @@ Random.seed!(1234)
       D, U = F
       Ut = F.Vt
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(D) isa NDTensors.DiagBlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(D) isa NDTensors.DiagBlockSparse
 
       u = commonind(D,U)
       up = uniqueind(D,U)
@@ -848,8 +938,8 @@ Random.seed!(1234)
       D, U = F
       Ut = F.Vt
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(D) isa NDTensors.DiagBlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(D) isa NDTensors.DiagBlockSparse
 
       l = uniqueind(D, U)
       r = commonind(D, U)
@@ -892,9 +982,9 @@ Random.seed!(1234)
       end
       U,S,V = svd(A,i)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       for b in nzblocks(U)
         @test flux(U,b)==QN(0)
@@ -917,9 +1007,9 @@ Random.seed!(1234)
       end
       U,S,V = svd(A,i)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       for b in nzblocks(U)
         @test flux(U,b)==QN(0)
@@ -942,9 +1032,9 @@ Random.seed!(1234)
       end
       U,S,V = svd(A,i)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       for b in nzblocks(U)
         @test flux(U,b)==QN(0)
@@ -966,9 +1056,9 @@ Random.seed!(1234)
 
 			U,S,V = svd(A,i,j)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       for b in nzblocks(A)
         @test flux(A,b)==QN(0,2)
@@ -994,9 +1084,9 @@ Random.seed!(1234)
 
 			U,S,V = svd(A,i,j)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       for b in nzblocks(A)
         @test flux(A,b)==QN(1,2)
@@ -1022,9 +1112,9 @@ Random.seed!(1234)
 
 			U,S,V = svd(A,i,i')
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       for b in nzblocks(A)
         @test flux(A,b)==QN(1,2)
@@ -1054,9 +1144,9 @@ Random.seed!(1234)
       cutoff = 1e-5
       U,S,V,spec = svd(A,i,j; utags="x", vtags="y", cutoff=cutoff)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       u = commonind(S,U)
       v = commonind(S,V)
@@ -1100,9 +1190,9 @@ Random.seed!(1234)
       maxdim = 4
       U,S,V,spec = svd(A,i,j; utags="x", vtags="y", maxdim=maxdim)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       u = commonind(S,U)
       v = commonind(S,V)
@@ -1143,9 +1233,9 @@ Random.seed!(1234)
       maxdim = 4
       U,S,V,spec = svd(A,i,j; utags="x", vtags="y", maxdim=maxdim)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       u = commonind(S,U)
       v = commonind(S,V)
@@ -1186,9 +1276,9 @@ Random.seed!(1234)
       maxdim = 4
       U,S,V,spec = svd(A,i,j; utags="x", vtags="y", maxdim=maxdim)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       u = commonind(S,U)
       v = commonind(S,V)
@@ -1229,9 +1319,9 @@ Random.seed!(1234)
       maxdim = 4
       U,S,V,spec = svd(A,i,j'; utags="x", vtags="y", maxdim=maxdim)
 
-      @test store(U) isa NDTensors.BlockSparse
-      @test store(S) isa NDTensors.DiagBlockSparse
-      @test store(V) isa NDTensors.BlockSparse
+      @test storage(U) isa NDTensors.BlockSparse
+      @test storage(S) isa NDTensors.DiagBlockSparse
+      @test storage(V) isa NDTensors.BlockSparse
 
       u = commonind(S,U)
       v = commonind(S,V)
@@ -1279,9 +1369,9 @@ Random.seed!(1234)
 
       A = emptyITensor(ElT, l,s,dag(r))
 
-      addblock!(A,(2,1,2))
-      addblock!(A,(1,2,2))
-      addblock!(A,(2,2,3))
+      insertblock!(A,(2,1,2))
+      insertblock!(A,(1,2,2))
+      insertblock!(A,(2,2,3))
 
       for b in nzblocks(A)
         @test flux(A,b)==QN()
@@ -1308,10 +1398,10 @@ Random.seed!(1234)
                 QN("Sz", 2) => 4,
                 QN("Sz", 4) => 1)
       A = emptyITensor(ElT, s, s')
-      addblock!(A, (5,2))
-      addblock!(A, (4,3))
-      addblock!(A, (3,4))
-      addblock!(A, (2,5))
+      insertblock!(A, (5,2))
+      insertblock!(A, (4,3))
+      insertblock!(A, (3,4))
+      insertblock!(A, (2,5))
       randn!(A)
       U,S,V = svd(A,s)
       @test U*S*V ≈ A
@@ -1324,11 +1414,11 @@ Random.seed!(1234)
                 QN("Sz", 2) => 4,
                 QN("Sz", 4) => 1)
       A = emptyITensor(ElT, s, s')
-      addblock!(A, (5,1))
-      addblock!(A, (4,2))
-      addblock!(A, (3,3))
-      addblock!(A, (2,4))
-      addblock!(A, (1,5))
+      insertblock!(A, (5,1))
+      insertblock!(A, (4,2))
+      insertblock!(A, (3,3))
+      insertblock!(A, (2,4))
+      insertblock!(A, (1,5))
       U,S,V = svd(A, s)
       @test dims(S) == dims(A)
       @test U*S*V ≈ A
@@ -1341,11 +1431,11 @@ Random.seed!(1234)
                 QN("Sz", 2) => 4,
                 QN("Sz", 4) => 1)
       A = emptyITensor(ElT, s, s')
-      addblock!(A, (5,1))
-      addblock!(A, (4,2))
-      addblock!(A, (3,3))
-      addblock!(A, (2,4))
-      addblock!(A, (1,5))
+      insertblock!(A, (5,1))
+      insertblock!(A, (4,2))
+      insertblock!(A, (3,3))
+      insertblock!(A, (2,4))
+      insertblock!(A, (1,5))
       U,S,V = svd(A, s; cutoff=0)
       @test dims(S) == (0,0)
       @test U*S*V ≈ A
@@ -1413,18 +1503,18 @@ end
     Aexp = exp(A)
     Amat = Array(A, i1,i2, i1', i2')
     Amatexp = reshape(exp(reshape(Amat,9,9)),3,3,3,3)
-    @test isapprox(norm(Array(Aexp,i1,i2,i1',i2') - Amatexp),0.0, atol=1e-14)
+    @test Array(Aexp,i1,i2,i1',i2') ≈ Amatexp rtol=1e-14
     @test flux(Aexp) == QN()
     @test length(setdiff(inds(Aexp),inds(A)))==0
 
-    @test isapprox(norm(exp(A, (i1,i2), (i1',i2')) - Aexp),0.0, atol=5e-14)
+    @test exp(A, (i1,i2), (i1',i2')) ≈ Aexp rtol=5e-14
 
     # test the case where indices are permuted
     A = randomITensor(QN(),i1,dag(i1)', dag(i2)',i2)
     Aexp = exp(A, (i1,i2), (i1',i2'))
     Amat = Array(A, i1,i2,i1', i2')
     Amatexp = reshape(exp(reshape(Amat,9,9)),3,3,3,3)
-    @test isapprox(norm(Array(Aexp,i1,i2,i1',i2') - Amatexp),0.0,atol=1e-14)
+    @test Array(Aexp,i1,i2,i1',i2') ≈ Amatexp rtol=1e-14
 
     # test exponentiation in the Hermitian case
     i1 = Index([QN(0)=>2,QN(1)=>2,QN(2)=>3],"i1")
@@ -1434,7 +1524,7 @@ end
     Amat = Array(Ah ,i1', i1)
     Aexp = exp(Ah; ishermitian=true)
     Amatexp= exp(LinearAlgebra.Hermitian(Amat))
-    @test isapprox(norm(Array(Aexp,i1,i1')-Amatexp),0.0,atol=5e-14)
+    @test Array(Aexp,i1,i1') ≈ Amatexp rtol=5e-14
   end
 
   @testset "Mixed arrows" begin
@@ -1445,6 +1535,46 @@ end
     @test exp(dense(A), (i1, i1'), (i2', i2)) ≈ dense(expA)
   end
 
+  @testset "Test contraction direction error" begin
+    i = Index([QN(0)=>1, QN(1)=>1], "i")
+    A = randomITensor(i', dag(i))
+    A² = A' * A
+    @test dense(A²) ≈ dense(A') * dense(A)
+    @test_throws ErrorException A' * dag(A)
+  end
+
+  @testset "Contraction resulting in no blocks with threading bug" begin
+    i = Index([QN(0) => 1, QN(1) => 1])
+    A = emptyITensor(i', dag(i))
+    B = emptyITensor(i', dag(i))
+    A[i' => 1, i => 1] = 11.0
+    B[i' => 2, i => 2] = 22.0
+
+    using_threaded_blocksparse = ITensors.disable_threaded_blocksparse()
+    C1 = A' * B
+    ITensors.enable_threaded_blocksparse()
+    C2 = A' * B
+    if using_threaded_blocksparse
+      ITensors.enable_threaded_blocksparse()
+    else
+      ITensors.disable_threaded_blocksparse()
+    end
+
+    @test nnzblocks(C1) == 0
+    @test nnzblocks(C2) == 0
+    @test nnz(C1) == 0
+    @test nnz(C2) == 0
+    @test C1 ≈ C2
+  end
+
+  @testset "Contraction with scalar ITensor" begin
+    i = Index([QN(0)=>2, QN(1)=>2])
+    A = randomITensor(i', dag(i))
+    A1 = A * ITensor(1)
+    A2 = ITensor(1) * A
+    @test A1 ≈ A
+    @test A2 ≈ A
+  end
 end
 
 end

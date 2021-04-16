@@ -33,55 +33,97 @@ MPO(::MPS)
 ## Properties
 
 ```@docs
+eltype(::ITensors.AbstractMPS)
+flux(::ITensors.AbstractMPS)
+hasqns(::ITensors.AbstractMPS)
 length(::ITensors.AbstractMPS)
 maxlinkdim(::ITensors.AbstractMPS)
-linkind(::ITensors.AbstractMPS,::Int)
 ```
 
-## Grabbing and finding indices
+## Obtaining and finding indices
 
 ```@docs
-firstsiteind
+siteinds(::typeof(commoninds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS, ::Int)
+siteinds(::typeof(uniqueinds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS, ::Int)
+findsite
+findsites
 firstsiteinds
+linkind(::ITensors.AbstractMPS,::Int)
 siteind(::MPS, ::Int)
+siteind(::typeof(first), ::MPS, ::Int)
 siteinds(::MPS)
 siteind(::MPO, ::Int)
 siteinds(::MPO)
 siteinds(::ITensors.AbstractMPS, ::Int)
-findsite
-findsites
 ```
 
 ## Priming and tagging
 
 ```@docs
 prime(::ITensors.AbstractMPS)
-prime!(::ITensors.AbstractMPS)
+prime(::typeof(siteinds), ::ITensors.AbstractMPS)
+prime(::typeof(linkinds), ::ITensors.AbstractMPS)
+prime(::typeof(siteinds), ::typeof(commoninds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+prime(::typeof(siteinds), ::typeof(uniqueinds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+
 setprime(::ITensors.AbstractMPS)
-setprime!(::ITensors.AbstractMPS)
+setprime(::typeof(siteinds), ::ITensors.AbstractMPS)
+setprime(::typeof(linkinds), ::ITensors.AbstractMPS)
+setprime(::typeof(siteinds), ::typeof(commoninds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+setprime(::typeof(siteinds), ::typeof(uniqueinds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+
 noprime(::ITensors.AbstractMPS)
-noprime!(::ITensors.AbstractMPS)
+noprime(::typeof(siteinds), ::ITensors.AbstractMPS)
+noprime(::typeof(linkinds), ::ITensors.AbstractMPS)
+noprime(::typeof(siteinds), ::typeof(commoninds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+noprime(::typeof(siteinds), ::typeof(uniqueinds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+
 addtags(::ITensors.AbstractMPS)
-addtags!(::ITensors.AbstractMPS)
+addtags(::typeof(siteinds), ::ITensors.AbstractMPS)
+addtags(::typeof(linkinds), ::ITensors.AbstractMPS)
+addtags(::typeof(siteinds), ::typeof(commoninds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+addtags(::typeof(siteinds), ::typeof(uniqueinds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+
 removetags(::ITensors.AbstractMPS)
-removetags!(::ITensors.AbstractMPS)
+removetags(::typeof(siteinds), ::ITensors.AbstractMPS)
+removetags(::typeof(linkinds), ::ITensors.AbstractMPS)
+removetags(::typeof(siteinds), ::typeof(commoninds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+removetags(::typeof(siteinds), ::typeof(uniqueinds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+
 replacetags(::ITensors.AbstractMPS)
-replacetags!(::ITensors.AbstractMPS)
+replacetags(::typeof(siteinds), ::ITensors.AbstractMPS)
+replacetags(::typeof(linkinds), ::ITensors.AbstractMPS)
+replacetags(::typeof(siteinds), ::typeof(commoninds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+replacetags(::typeof(siteinds), ::typeof(uniqueinds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+
 settags(::ITensors.AbstractMPS)
-settags!(::ITensors.AbstractMPS)
+settags(::typeof(siteinds), ::ITensors.AbstractMPS)
+settags(::typeof(linkinds), ::ITensors.AbstractMPS)
+settags(::typeof(siteinds), ::typeof(commoninds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
+settags(::typeof(siteinds), ::typeof(uniqueinds), ::ITensors.AbstractMPS, ::ITensors.AbstractMPS)
 ```
 
 ## Operations
 
 ```@docs
+expect(::MPS,::AbstractString...)
+correlator(::MPS,::AbstractString,::AbstractString)
 dag(::ITensors.AbstractMPS)
-dag!(::ITensors.AbstractMPS)
+dense(::ITensors.AbstractMPS)
+movesite(::ITensors.AbstractMPS, ::Pair{Int, Int};orthocenter::Int,kwargs...)
 orthogonalize!
-truncate!
 replacebond!(::MPS, ::Int, ::ITensor)
 sample(::MPS)
 sample!(::MPS)
 sample(::MPO)
+swapbondsites(::ITensors.AbstractMPS, ::Int; kwargs...)
+truncate!
+```
+
+## Gate evolution
+
+```@docs
+product(::Vector{ <: ITensor}, ::ITensors.AbstractMPS)
 ```
 
 ## Algebra Operations
