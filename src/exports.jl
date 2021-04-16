@@ -276,6 +276,7 @@ export
   rproj,
   noiseterm,
   position!,
+  free!,
 
 # mps/projmposum.jl
   ProjMPOSum,

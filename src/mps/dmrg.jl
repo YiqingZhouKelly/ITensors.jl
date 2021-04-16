@@ -36,7 +36,9 @@ function dmrg(H::MPO, psi0::MPS, sweeps::Sweeps; kwargs...)
   # and minimize permutations
   H = permute(H, (linkind, siteinds, linkind))
   PH = ProjMPO(H)
-  return dmrg(PH,psi0,sweeps;kwargs...)
+  to_return= dmrg(PH,psi0,sweeps;kwargs...)
+  free!(PH)
+  return to_return
 end
 
 """
@@ -67,7 +69,9 @@ function dmrg(Hs::Vector{MPO}, psi0::MPS, sweeps::Sweeps; kwargs...)
   end
   Hs .= permute.(Hs, Ref((linkind, siteinds, linkind)))
   PHS = ProjMPOSum(Hs)
-  return dmrg(PHS,psi0,sweeps;kwargs...)
+  to_return = dmrg(PHS,psi0,sweeps;kwargs...)
+  free!(PHS)
+  return to_return
 end
 
 """
@@ -100,7 +104,9 @@ function dmrg(H::MPO, Ms::Vector{MPS}, psi0::MPS, sweeps::Sweeps; kwargs...)
   Ms .= permute.(Ms, Ref((linkind, siteinds, linkind)))
   weight = get(kwargs,:weight,1.0)
   PMM = ProjMPO_MPS(H,Ms;weight=weight)
-  return dmrg(PMM,psi0,sweeps;kwargs...)
+  to_return = dmrg(PMM,psi0,sweeps;kwargs...)
+  free!(PMM)
+  return to_return
 end
 
 

@@ -122,3 +122,9 @@ function noiseterm(P::ProjMPOSum,
   end
   return nt
 end
+
+function free!(P::ProjMPOSum)
+  for PH in P.pm
+    free!(PH)
+  end
+end

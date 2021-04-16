@@ -31,7 +31,11 @@ mutable struct ProjMPO
     P = new(0,length(H)+1,2,H,
             Vector{ITensor}(undef, length(H)),
             true, Vector{String}(undef, length(H)), rand(1:9999))
-    isdir("ProjMPO_$(P.id)") || (mkdir("ProjMPO_$(P.id)")) # the dir shouldn't exist... but to pass test
+    # if isdir("ProjMPO_$(P.id)")
+    #   P.id = 
+    # end
+    println("== Create dir ProjMPO_$(P.id) ==")
+    mkdir("ProjMPO_$(P.id)") # the dir shouldn't exist... but to pass test
     
     # define finalizer to cleanup disk when gc runs
     function cleardisk(PH:: ProjMPO)
@@ -72,6 +76,15 @@ function set_wdisk(P::ProjMPO, b::Bool)
     end
   end
 end
+
+function free!(P::ProjMPO)
+  if P.wdisk
+    println("== Deleting ProjMPO $(P.id) from disk == ")
+    rm("ProjMPO_$(P.id)", recursive=true, force=true)
+    # rm("ProjMPO_$(P.id)", force=true)
+  end
+end
+
 
 function Base.getindex(P::ProjMPO, i::Int)
 """

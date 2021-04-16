@@ -25,6 +25,8 @@ function product(P::ProjMPO_MPS,
   return Pv
 end
 
+free!(P::ProjMPO_MPS) = free!(P.PH)
+
 function Base.eltype(P::ProjMPO_MPS)
   elT = eltype(P.PH)
   for p in P.pm
